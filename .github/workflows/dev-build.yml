@@ -1,0 +1,70 @@
+# Fast development build: DX11-AVX only, no release.
+# Runs on pushes to dlss-* branches and can be started manually from the Actions tab.
+# Download the "dev_DX11-AVX" artifact from the run page: it contains bin/ (exe + pdb)
+# and db/mods/00_modded_exes_gamedata.db0, laid out like the Anomaly folder.
+
+name: Dev build (DX11-AVX)
+
+on:
+  push:
+    branches: [ "dlss-*" ]
+  workflow_dispatch:
+
+env:
+  SOLUTION_FILE_PATH: src/engine-vs2022.sln
+  BUILD_CONF: DX11-AVX
+  PACK_GAMEDATA_NAME: 00_modded_exes_gamedata.db0
+
+concurrency:
+  group: dev-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: build-dx11-avx
+    runs-on: windows-latest
+
+    steps:
+    - name: Configure Pagefile
+      uses: al-cheb/configure-pagefile-action@v1.3
+      with:
+        minimum-size: 8GB
+        maximum-size: 8GB
+        disk-root: "C:"
+
+    - name: Checkout repo
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: setup-msbuild
+      uses: microsoft/setup-msbuild@v1.3.1
+      with:
+        msbuild-architecture: "x64"
+
+    - name: Build ${{ env.BUILD_CONF }}
+      run: msbuild /p:Configuration=${{ env.BUILD_CONF }} ${{ env.SOLUTION_FILE_PATH }}
+
+    - name: Pack gamedata
+      run: |
+        new-item -path "./compressor/gamedata" -itemtype directory -force
+        copy-item -path "./gamedata/*" -destination "./compressor/gamedata" -recurse -force
+        cd ./compressor
+        start-process -filepath "./! compress_gamedata.cmd" -Wait
+        rename-item -path gamedata.db0 -newname ${{ env.PACK_GAMEDATA_NAME }}
+
+    - name: Stage package
+      run: |
+        new-item -path "./package/bin" -itemtype directory -force
+        new-item -path "./package/db/mods" -itemtype directory -force
+        copy-item -path "./_build/_game/bin_dbg/*.exe" -destination "./package/bin"
+        copy-item -path "./_build/_game/bin_dbg/*.pdb" -destination "./package/bin"
+        copy-item -path "./compressor/${{ env.PACK_GAMEDATA_NAME }}" -destination "./package/db/mods"
+
+    - name: Upload package
+      uses: actions/upload-artifact@v4.6.0
+      with:
+        name: dev_${{ env.BUILD_CONF }}
+        path: ./package
+        if-no-files-found: "error"
+        retention-days: 14
