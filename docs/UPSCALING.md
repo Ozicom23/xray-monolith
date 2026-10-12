@@ -59,6 +59,7 @@ Internal render resolution for DLSS: DLAA 100%, Quality 67%, Balanced 58%, Perfo
 - The whole 3D chain (G-buffer, lighting, SSS effects, combine, post effects) renders at the internal resolution. The upscaler runs just before the final `postprocess` pass; that pass and the UI run at native resolution.
 - Jitter goes through the SSS `ssfx_jitter` shader constant (Halton sequence). Motion vectors are SSS's `rt_ssfx_motion_vectors`.
 - 3D scope (second viewport) frames are not fed to the upscaler and are upscaled bilinearly.
+- Texture LOD bias: while upscaling, `log2(render / output)` is added to `r__tf_mipbias` (e.g. -1.58 for Ultra Performance, -1.0 for Performance), so textures and alpha-tested foliage keep output-resolution sharpness.
 - Code: `src/Layers/xrRenderPC_R4/r4_upscaler.*` (shared interface), `r4_dlss.*` (NGX wrapper), `r4_fsr3.*` (FSR with the D3D11 backend), `r4_rendertarget_phase_PP.cpp` (frame scope and evaluate).
 
 ## Known limitations

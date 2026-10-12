@@ -95,6 +95,7 @@ extern ECORE_API float ps_r__ssaDONTSORT;
 extern ECORE_API float ps_r__ssaHZBvsTEX;
 extern ECORE_API int ps_r__tf_Anisotropic;
 extern ECORE_API float ps_r__tf_Mipbias;
+extern ECORE_API float r__upscaler_mip_bias; // added to ps_r__tf_Mipbias while upscaling
 
 enum
 {

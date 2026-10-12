@@ -1347,6 +1347,10 @@ CRenderTarget::CRenderTarget()
 	}
 	g_svp_keep_main_prev = m_upscale_enabled;
 
+	// Sample textures as sharp as at output resolution (NVIDIA and AMD recommend log2(render / output))
+	r__upscaler_mip_bias = m_upscale_enabled ? log2f(float(m_upscale_render_w) / float(m_upscale_output_w)) : 0.f;
+	SSManager.SetMipLODBias(ps_r__tf_Mipbias + r__upscaler_mip_bias);
+
 	//
 	dwWidth = Device.dwWidth;
 	dwHeight = Device.dwHeight;
