@@ -40,3 +40,4 @@ src/3rd party/NVIDIA-DLSS/
 
 # FSR shaders compiled by CI
 src/3rd party/FidelityFX-FSR3/generated/
+src/3rd party/FidelityFX-FSR3/generated_wrappers/

@@ -13,13 +13,17 @@ if (-not $fxc) { throw "fxc.exe not found in the Windows SDK" }
 Write-Host "Using $($fxc.FullName)"
 
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
+$OutDir = (Resolve-Path $OutDir).Path
 
-$gpu = "$PSScriptRoot\include\FidelityFX\gpu"
+# Work with relative paths: the repo path contains a space ("3rd party")
+Push-Location $PSScriptRoot
+$wrapDir = "generated_wrappers"
+New-Item -ItemType Directory -Force -Path $wrapDir | Out-Null
 
 # Fixed configuration used by the engine: LDR color, render-resolution motion vectors without jitter,
 # regular (non-inverted) depth. Only sharpening is a runtime permutation.
 $defines = @(
-    "FFX_GPU=1", "FFX_HLSL=1", "FFX_HLSL_SM=50", "FFX_HALF=0", "FFX_PREFER_WAVE64=",
+    "FFX_GPU=1", "FFX_HLSL=1", "FFX_HLSL_SM=50", "FFX_HALF=0",
     "FFX_SPD_NO_WAVE_OPERATIONS=1",
     "FFX_FSR3UPSCALER_OPTION_UPSAMPLE_SAMPLERS_USE_DATA_HALF=0",
     "FFX_FSR3UPSCALER_OPTION_ACCUMULATE_SAMPLERS_USE_DATA_HALF=0",
@@ -34,15 +38,23 @@ $defines = @(
 )
 
 $failed = 0
-foreach ($shader in Get-ChildItem "$PSScriptRoot\shaders\*.hlsl") {
+foreach ($shader in Get-ChildItem "shaders\*.hlsl") {
     $name = $shader.BaseName
+
+    # Wrapper defines the macros that must be empty (not expressible as /D on the command line)
+    $wrapper = Join-Path $wrapDir "$name.hlsl"
+    Set-Content -Path $wrapper -Encoding ASCII -Value @(
+        "#define FFX_PREFER_WAVE64",
+        "#include `"../shaders/$name.hlsl`""
+    )
+
     foreach ($sharpen in 0, 1) {
         $var = "g_${name}_s${sharpen}"
         $out = Join-Path $OutDir "${name}_s${sharpen}.h"
         $fxcArgs = @("/nologo", "/T", "cs_5_0", "/E", "CS", "/O3", "/Vn", $var, "/Fh", $out,
-                  "/I", $gpu, "/I", "$gpu\fsr3upscaler")
+                     "/I", "include\FidelityFX\gpu", "/I", "include\FidelityFX\gpu\fsr3upscaler")
         foreach ($d in $defines + "FFX_FSR3UPSCALER_OPTION_APPLY_SHARPENING=$sharpen") { $fxcArgs += @("/D", $d) }
-        $fxcArgs += $shader.FullName
+        $fxcArgs += $wrapper
 
         & $fxc.FullName @fxcArgs
         if ($LASTEXITCODE -ne 0) {
@@ -51,6 +63,8 @@ foreach ($shader in Get-ChildItem "$PSScriptRoot\shaders\*.hlsl") {
         }
     }
 }
+
+Pop-Location
 
 if ($failed -gt 0) { throw "$failed shader permutation(s) failed to compile" }
 Write-Host "All FSR shaders compiled to $OutDir"
