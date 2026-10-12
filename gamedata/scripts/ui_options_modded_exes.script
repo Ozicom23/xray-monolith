@@ -174,6 +174,27 @@ function on_xml_read()
 						step         = 0.05,
 						precondition = for_r4,
 					},
+					{
+						id           = "perf_overlay",
+						type         = "list",
+						val          = 0,
+						cmd          = "perf_overlay",
+						content      = {{"off", "perf_overlay_off"}, {"compact", "perf_overlay_compact"}, {"detailed", "perf_overlay_detailed"}},
+						precondition = for_r4,
+					},
+					{
+						id           = "perf_overlay_pos",
+						type         = "list",
+						val          = 0,
+						cmd          = "perf_overlay_pos",
+						content      = {
+							{"top_left", "perf_overlay_top_left"},
+							{"top_right", "perf_overlay_top_right"},
+							{"bottom_left", "perf_overlay_bottom_left"},
+							{"bottom_right", "perf_overlay_bottom_right"},
+						},
+						precondition = for_r4,
+					},
 				}
 				for i, row in ipairs(rows) do
 					table.insert(advanced.gr, insert_idx + i - 1, row)

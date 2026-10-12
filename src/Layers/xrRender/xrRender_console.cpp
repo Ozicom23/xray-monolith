@@ -332,6 +332,23 @@ xr_token upscaler_quality_token[] = {
 };
 float ps_r4_fsr_sharpness         = 0.3f;   // r4-only, FSR RCAS sharpening, 0 = off
 Fvector4 ps_r4_upscaler_signs     = { 1, 1, 1, 1 }; // r4-only, debug: motion vector x/y and jitter x/y sign multipliers
+
+// Performance overlay (r4-only)
+u32 ps_perf_overlay = 0; // 0 off, 1 compact, 2 detailed
+xr_token perf_overlay_token[] = {
+	{ "off", 0 },
+	{ "compact", 1 },
+	{ "detailed", 2 },
+	{ 0, 0 }
+};
+u32 ps_perf_overlay_pos = 1; // screen corner
+xr_token perf_overlay_pos_token[] = {
+	{ "top_left", 0 },
+	{ "top_right", 1 },
+	{ "bottom_left", 2 },
+	{ "bottom_right", 3 },
+	{ 0, 0 }
+};
 int   ps_r4_dlss_log              = 0;      // r4-only, forward NGX log into the engine log, needs vid_restart
 
 int   ps_r4_hdr10_tonemapper   		   = 0;    // r4-only, default = ACES (Narkowicz)
@@ -556,6 +573,14 @@ float r_rain_k = 99.0f;
 #ifndef _EDITOR
 #include	"../../xrEngine/xr_ioconsole.h"
 #include	"../../xrEngine/xr_ioc_cmd.h"
+
+// Cycles the performance overlay: off -> compact -> detailed (bindable with bind_console)
+class CCC_PerfOverlayToggle : public IConsole_Command
+{
+public:
+	CCC_PerfOverlayToggle(LPCSTR N) : IConsole_Command(N) { bEmptyArgsHandled = TRUE; }
+	virtual void Execute(LPCSTR args) { ps_perf_overlay = (ps_perf_overlay + 1) % 3; }
+};
 
 #if defined(USE_DX10) || defined(USE_DX11)
 #include "../xrRenderDX10/StateManager/dx10SamplerStateCache.h"
@@ -1289,6 +1314,11 @@ void xrRender_initconsole()
 	CMD4(CCC_Float,   "r4_fsr_sharpness",         &ps_r4_fsr_sharpness,              0.f, 1.f);
 	CMD4(CCC_Vector4, "r4_upscaler_signs",        &ps_r4_upscaler_signs, Fvector4().set(-1, -1, -1, -1), Fvector4().set(1, 1, 1, 1));
 	CMD4(CCC_Integer, "r4_dlss_log",              &ps_r4_dlss_log,                   0, 2);
+#if defined(USE_DX11)
+	CMD3(CCC_Token,   "perf_overlay",             &ps_perf_overlay,                  perf_overlay_token);
+	CMD3(CCC_Token,   "perf_overlay_pos",         &ps_perf_overlay_pos,              perf_overlay_pos_token);
+	CMD1(CCC_PerfOverlayToggle, "perf_overlay_toggle");
+#endif
     CMD4(CCC_Integer, "r4_hdr10_colorspace",	  &ps_r4_hdr10_colorspace, 		     0, 2);
 
     CMD4(CCC_Integer, "r4_hdr10_tonemapper", 	  		&ps_r4_hdr10_tonemapper,      	      0, 8);

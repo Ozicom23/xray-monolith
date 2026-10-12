@@ -98,6 +98,20 @@ void _draw_cam_pos(CGameFont* pFont)
 	pFont->OnRender();
 }
 
+// Timers are collected while rs_stats or the performance overlay is on (g_stats_gather_timers)
+void CStats::UpdateTimers()
+{
+	static u32 dw_lastframe;
+
+	if (dw_lastframe == Device.dwTimeGlobal)
+		return;
+
+	dw_lastframe = Device.dwTimeGlobal;
+
+	FrameEndTimers();
+	FrameStartTimers();
+}
+
 void CStats::Show()
 {
 	static u32 dw_lastframe;
@@ -107,6 +121,13 @@ void CStats::Show()
 
 	dw_lastframe = Device.dwTimeGlobal;
 
+	FrameEndTimers();
+	ShowText();
+	FrameStartTimers();
+}
+
+void CStats::FrameEndTimers()
+{
 	// Stop timers
 	{
 		EngineTOTAL.FrameEnd();
@@ -190,7 +211,10 @@ void CStats::Show()
 		else fMem_calls = .9f * fMem_calls + .1f * mem_count;
 		Memory.stat_calls = 0;
 	}
+}
 
+void CStats::ShowText()
+{
 	////////////////////////////////////////////////
 	if (g_dedicated_server) return;
 	////////////////////////////////////////////////
@@ -421,7 +445,10 @@ void CStats::Show()
         F.OnRender();
     }
 #endif
+}
 
+void CStats::FrameStartTimers()
+{
 	{
 		EngineTOTAL.FrameStart();
 		Sheduler.FrameStart();

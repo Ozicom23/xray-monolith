@@ -43,6 +43,7 @@
 
 ENGINE_API CRenderDevice Device;
 ENGINE_API bool g_svp_keep_main_prev = false;
+ENGINE_API bool g_stats_gather_timers = false;
 ENGINE_API CLoadScreenRenderer load_screen_renderer;
 ENGINE_API CRenderDevice* DevicePtr = nullptr;
 
@@ -355,7 +356,7 @@ void CRenderDevice::on_idle()
 #endif
 
 	START_PROFILE("Set stat gathering");
-	if (psDeviceFlags.test(rsStatistic))
+	if (psDeviceFlags.test(rsStatistic) || g_stats_gather_timers)
 		g_bEnableStatGather = TRUE;
 	else g_bEnableStatGather = FALSE;
 	STOP_PROFILE;
@@ -526,6 +527,8 @@ void CRenderDevice::on_idle()
 			PROF_EVENT("Draw statistics");
 			Statistic->Show();
 		}
+		else if (g_stats_gather_timers)
+			Statistic->UpdateTimers();
 
 		End();
 	}

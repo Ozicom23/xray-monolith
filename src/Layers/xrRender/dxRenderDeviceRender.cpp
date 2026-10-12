@@ -2,6 +2,9 @@
 #include "dxRenderDeviceRender.h"
 
 #include "ResourceManager.h"
+#ifdef USE_DX11
+#include "../xrRenderPC_R4/r4_perf_overlay.h"
+#endif
 
 dxRenderDeviceRender::dxRenderDeviceRender()
 	: Resources(0)
@@ -351,6 +354,10 @@ void dxRenderDeviceRender::Begin()
 	CHK_DX(HW.pDevice->BeginScene());
 #endif	//	USE_DX10
 
+#ifdef USE_DX11
+	g_PerfOverlay.GpuFrameBegin();
+#endif
+
 	RCache.OnFrameBegin();
 	RCache.set_CullMode(CULL_CW);
 	RCache.set_CullMode(CULL_CCW);
@@ -385,6 +392,10 @@ void dxRenderDeviceRender::End()
 	VERIFY(HW.pDevice);
 
 	if (HW.Caps.SceneMode) overdrawEnd();
+
+#ifdef USE_DX11
+	g_PerfOverlay.GpuFrameEnd();
+#endif
 
 	RCache.OnFrameEnd();
 	Memory.dbg_check();

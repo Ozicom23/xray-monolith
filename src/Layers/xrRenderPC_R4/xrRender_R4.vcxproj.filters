@@ -395,6 +395,9 @@
     <ClInclude Include="r4_upscaler.h">
       <Filter>Core_Target</Filter>
     </ClInclude>
+    <ClInclude Include="r4_perf_overlay.h">
+      <Filter>Core_Target</Filter>
+    </ClInclude>
     <ClInclude Include="r4_rendertarget.h">
       <Filter>Core_Target</Filter>
     </ClInclude>
@@ -1095,6 +1098,9 @@
       <Filter>Core_Target</Filter>
     </ClCompile>
     <ClCompile Include="r4_upscaler.cpp">
+      <Filter>Core_Target</Filter>
+    </ClCompile>
+    <ClCompile Include="r4_perf_overlay.cpp">
       <Filter>Core_Target</Filter>
     </ClCompile>
     <ClCompile Include="..\..\3rd party\FidelityFX-FSR3\src\components\fsr3upscaler\ffx_fsr3upscaler.cpp">

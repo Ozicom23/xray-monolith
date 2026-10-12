@@ -62,6 +62,40 @@
 		<text>Ultra Performance</text>
 	</string>
 
+	<string id="ui_mm_video_advanced_perf_overlay">
+		<text>Performance Overlay</text>
+	</string>
+	<string id="ui_mm_video_advanced_perf_overlay_desc">
+		<text>On-screen FPS, frame time, 1% low, GPU and CPU time, VRAM and render resolution. Detailed adds the engine CPU breakdown, draw calls and a frame-time graph. Bind a key with: bind_console perf_overlay_toggle kF10 (perf_overlay)</text>
+	</string>
+	<string id="ui_mm_video_advanced_perf_overlay_pos">
+		<text>Overlay Position</text>
+	</string>
+	<string id="ui_mm_video_advanced_perf_overlay_pos_desc">
+		<text>Screen corner of the performance overlay. (perf_overlay_pos)</text>
+	</string>
+	<string id="ui_mm_lst_perf_overlay_off">
+		<text>Off</text>
+	</string>
+	<string id="ui_mm_lst_perf_overlay_compact">
+		<text>Compact</text>
+	</string>
+	<string id="ui_mm_lst_perf_overlay_detailed">
+		<text>Detailed</text>
+	</string>
+	<string id="ui_mm_lst_perf_overlay_top_left">
+		<text>Top Left</text>
+	</string>
+	<string id="ui_mm_lst_perf_overlay_top_right">
+		<text>Top Right</text>
+	</string>
+	<string id="ui_mm_lst_perf_overlay_bottom_left">
+		<text>Bottom Left</text>
+	</string>
+	<string id="ui_mm_lst_perf_overlay_bottom_right">
+		<text>Bottom Right</text>
+	</string>
+
 	<string id="ui_mm_lst_ON">
 		<text>ON</text>
 	</string>

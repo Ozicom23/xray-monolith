@@ -103,6 +103,13 @@ public:
 	shared_str eval_line_3;
 
 	void Show(void);
+	// Finalizes and restarts the frame timers without drawing (used by the performance overlay)
+	void UpdateTimers();
+private:
+	void FrameEndTimers();
+	void ShowText();
+	void FrameStartTimers();
+public:
 	virtual void OnRender();
 	void OnDeviceCreate(void);
 	void OnDeviceDestroy(void);

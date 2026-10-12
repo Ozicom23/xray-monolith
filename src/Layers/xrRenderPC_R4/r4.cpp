@@ -18,6 +18,7 @@
 
 #include "D3DX10Core.h"
 #include "r4_upscaler.h"
+#include "r4_perf_overlay.h"
 
 CRender RImplementation;
 
@@ -559,6 +560,7 @@ void CRender::destroy()
 	xr_delete(Target);
 	for (u32 type = upscaler_dlss; type <= upscaler_fsr; ++type)
 		GetUpscaler(type)->Shutdown();
+	g_PerfOverlay.Destroy();
 	PSLibrary.OnDestroy();
 	Device.seqFrame.Remove(this);
 	Device.ModelDefferClear = nullptr;
@@ -641,6 +643,8 @@ void CRender::OnFrame()
 
 	if (Details)
 		g_pGamePersistent->GrassBendersUpdateAnimations();
+
+	g_PerfOverlay.Draw();
 }
 
 // Particles

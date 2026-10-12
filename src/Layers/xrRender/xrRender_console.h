@@ -233,6 +233,10 @@ extern ECORE_API float    ps_r4_fsr_sharpness;    // r4-only
 extern ECORE_API Fvector4 ps_r4_upscaler_signs;   // r4-only
 extern ECORE_API int      ps_r4_dlss_log;         // r4-only
 
+/* --- Performance overlay --- */
+extern ECORE_API u32      ps_perf_overlay;        // r4-only, 0 off, 1 compact, 2 detailed
+extern ECORE_API u32      ps_perf_overlay_pos;    // r4-only, screen corner
+
 extern ECORE_API int   ps_r4_hdr10_tonemapper;    		 // r4-only
 extern ECORE_API int   ps_r4_hdr10_tonemap_mode;  		 // r4-only
 extern ECORE_API float ps_r4_hdr10_exposure;      		 // r4-only

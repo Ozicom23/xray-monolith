@@ -562,6 +562,7 @@
     <ClInclude Include="r4.h" />
     <ClInclude Include="r4_dlss.h" />
     <ClInclude Include="r4_fsr3.h" />
+    <ClInclude Include="r4_perf_overlay.h" />
     <ClInclude Include="r4_upscaler.h" />
     <ClInclude Include="r4_rendertarget.h" />
     <ClInclude Include="r4_rendertarget_wallmarks.h" />
@@ -787,6 +788,7 @@
     <ClCompile Include="r4_fsr3.cpp">
       <AdditionalIncludeDirectories>$(SolutionDir)3rd party\FidelityFX-FSR3\include;$(SolutionDir)3rd party\FidelityFX-FSR3\src\shared;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
+    <ClCompile Include="r4_perf_overlay.cpp" />
     <ClCompile Include="r4_upscaler.cpp" />
     <ClCompile Include="..\..\3rd party\FidelityFX-FSR3\src\components\fsr3upscaler\ffx_fsr3upscaler.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
