@@ -140,8 +140,14 @@ void InitPassData(FfxInt32x2 iPxHrPos, FFX_PARAMETER_INOUT AccumulationPassCommo
 
 void Accumulate(FfxInt32x2 iPxHrPos)
 {
+#if defined(FFX_HLSL)
+    // XRAY-DX11: zero-init, fxc (cs_5_0) rejects passing partially initialized structs as inout
+    AccumulationPassCommonParams params = (AccumulationPassCommonParams)0;
+    AccumulationPassData data = (AccumulationPassData)0;
+#else
     AccumulationPassCommonParams params;
     AccumulationPassData data;
+#endif
     InitPassData(iPxHrPos, params, data);
 
     if (params.bIsExistingSample && !params.bIsNewSample) {
