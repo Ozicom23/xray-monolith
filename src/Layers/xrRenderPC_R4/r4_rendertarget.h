@@ -527,6 +527,8 @@ public:
 	// describe the render resolution, so the existing passes need no changes.
 	bool dlss_enabled() const { return m_dlss_enabled; }
 	bool dlss_in_scene() const { return m_dlss_in_scene; }
+	u32 dlss_render_width() const { return m_dlss_render_w; }
+	u32 dlss_render_height() const { return m_dlss_render_h; }
 	void dlss_begin_scene();
 	void dlss_end_scene();
 	void phase_dlss();
