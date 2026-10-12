@@ -115,6 +115,58 @@ function on_xml_read()
 			end
 		end
 
+		-- DLSS (DX11 only), below SMAA in Video > Advanced
+		local advanced = nil
+		for _, top in ipairs(ui_options.options) do
+			if top.id == "video" and top.gr then
+				for _, sub in ipairs(top.gr) do
+					if sub.id == "advanced" then advanced = sub; break end
+				end
+				break
+			end
+		end
+		if advanced and advanced.gr then
+			local already_present = false
+			local insert_idx = #advanced.gr + 1
+			for i, row in ipairs(advanced.gr) do
+				if row.id == "dlss" then
+					already_present = true
+					break
+				end
+				if row.id == "smaa" then
+					insert_idx = i + 1
+				end
+			end
+			if not already_present then
+				local for_r4 = {ui_options.for_renderer, "renderer_r4"}
+				table.insert(advanced.gr, insert_idx, {
+					id           = "dlss",
+					type         = "list",
+					val          = 0,
+					cmd          = "r4_dlss",
+					content      = {{"1", "ON"}, {"0", "OFF"}},
+					vid          = true,
+					precondition = for_r4,
+				})
+				table.insert(advanced.gr, insert_idx + 1, {
+					id           = "dlss_quality",
+					type         = "list",
+					val          = 0,
+					cmd          = "r4_dlss_quality",
+					content      = {
+						{"dlaa", "dlss_dlaa"},
+						{"quality", "dlss_quality"},
+						{"balanced", "dlss_balanced"},
+						{"performance", "dlss_performance"},
+						{"ultra_performance", "dlss_ultra_performance"},
+					},
+					vid          = true,
+					precondition = for_r4,
+				})
+				need_init_opt_coder = true
+			end
+		end
+
 		if need_init_opt_coder and ui_options.init_opt_coder then
 			ui_options.init_opt_coder()
 		end

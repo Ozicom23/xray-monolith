@@ -19,6 +19,34 @@
 		<text>Сохраняет состояние текущей погоды чтобы точно восстановить её при загрузке</text>
 	</string>
 
+	<string id="ui_mm_video_advanced_dlss">
+		<text>NVIDIA DLSS</text>
+	</string>
+	<string id="ui_mm_video_advanced_dlss_desc">
+		<text>Renders the 3D scene at a lower resolution and upscales it with NVIDIA DLSS Super Resolution. Requires an NVIDIA RTX GPU, nvngx_dlss.dll next to the exe and Screen Space Shaders (for motion vectors). Replaces SMAA and SSS TAA. MSAA must be off. (r4_dlss)</text>
+	</string>
+	<string id="ui_mm_video_advanced_dlss_quality">
+		<text>DLSS Mode</text>
+	</string>
+	<string id="ui_mm_video_advanced_dlss_quality_desc">
+		<text>Internal render resolution: DLAA 100%, Quality 67%, Balanced 58%, Performance 50%, Ultra Performance 33%. (r4_dlss_quality)</text>
+	</string>
+	<string id="ui_mm_lst_dlss_dlaa">
+		<text>DLAA</text>
+	</string>
+	<string id="ui_mm_lst_dlss_quality">
+		<text>Quality</text>
+	</string>
+	<string id="ui_mm_lst_dlss_balanced">
+		<text>Balanced</text>
+	</string>
+	<string id="ui_mm_lst_dlss_performance">
+		<text>Performance</text>
+	</string>
+	<string id="ui_mm_lst_dlss_ultra_performance">
+		<text>Ultra Performance</text>
+	</string>
+
 	<string id="ui_mm_lst_ON">
 		<text>ВКЛ</text>
 	</string>
