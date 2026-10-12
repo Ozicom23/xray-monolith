@@ -5,6 +5,8 @@
 #include "../../xrEngine/IGame_Persistent.h"
 
 #include <dxgi1_4.h>
+#include <psapi.h>
+#pragma comment(lib, "psapi.lib")
 #include <algorithm>
 
 #include "imgui.h"
@@ -144,6 +146,25 @@ void CPerfOverlay::UpdateVram()
 	}
 }
 
+void CPerfOverlay::UpdateRam()
+{
+	const double gb = 1024.0 * 1024.0 * 1024.0;
+
+	// Game: physical memory in use by the process (working set, as in Task Manager)
+	PROCESS_MEMORY_COUNTERS pmc = {};
+	if (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc)))
+		m_ram_used_gb = float(double(pmc.WorkingSetSize) / gb);
+
+	// System: available and total physical memory
+	MEMORYSTATUSEX ms = {};
+	ms.dwLength = sizeof(ms);
+	if (GlobalMemoryStatusEx(&ms))
+	{
+		m_ram_avail_gb = float(double(ms.ullAvailPhys) / gb);
+		m_ram_total_gb = float(double(ms.ullTotalPhys) / gb);
+	}
+}
+
 void CPerfOverlay::Destroy()
 {
 	for (u32 i = 0; i < kGpuQueries; ++i)
@@ -226,6 +247,7 @@ void CPerfOverlay::Draw()
 			m_show_low_fps = recent[idx] > 0.f ? 1000.f / recent[idx] : 0.f;
 		}
 		UpdateVram();
+		UpdateRam();
 	}
 
 	// Only inside an open ImGui frame (not before the engine's first ImGui::NewFrame)
@@ -274,6 +296,8 @@ void CPerfOverlay::Draw()
 			ImGui::Text("VRAM %.2f GB used, budget %.1f / %.1f GB", m_vram_used_gb, m_vram_budget_gb, m_vram_total_gb);
 		else if (m_vram_budget_gb > 0.f)
 			ImGui::Text("VRAM %.2f GB used, budget %.1f GB", m_vram_used_gb, m_vram_budget_gb);
+		if (m_ram_total_gb > 0.f)
+			ImGui::Text("RAM  %.2f GB used, %.1f / %.1f GB free", m_ram_used_gb, m_ram_avail_gb, m_ram_total_gb);
 
 		CRenderTarget* target = RImplementation.Target;
 		CUpscaler* upscaler = GetUpscaler(RImplementation.o.upscaler);

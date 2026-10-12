@@ -37,6 +37,7 @@ private:
 	bool CreateQueries();
 	void CollectGpuTimes();
 	void UpdateVram();
+	void UpdateRam();
 
 	GpuQuery m_queries[kGpuQueries] = {};
 	u32 m_query_write = 0;
@@ -67,6 +68,10 @@ private:
 	float m_vram_used_gb = 0.f;
 	float m_vram_budget_gb = 0.f;
 	float m_vram_total_gb = 0.f; // dedicated video memory of the adapter
+
+	float m_ram_used_gb = 0.f;  // game process working set
+	float m_ram_avail_gb = 0.f; // system physical memory available
+	float m_ram_total_gb = 0.f;
 
 	u32 m_draw_calls = 0;
 	u32 m_polys = 0;
