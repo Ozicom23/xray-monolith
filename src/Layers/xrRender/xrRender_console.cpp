@@ -336,7 +336,7 @@ xr_token upscaler_quality_token[] = {
 float ps_r4_fsr_sharpness         = 0.3f;   // r4-only, FSR RCAS sharpening, 0 = off
 // r4-only, FSR 3.1 stability tuning: velocity factor, shading change scale, accumulation added per frame,
 // min disocclusion accumulation (AMD defaults 1, 1, 0.333, -0.333)
-Fvector4 ps_r4_fsr_tuning         = { 1.f, 1.f, 0.333f, -0.333f };
+Fvector4 ps_r4_fsr_tuning         = { 1.f, 1.f, 1.f, 1.f }; // AMD defaults 1,1,0.333,-0.333 shimmer on thin geometry (wires, fences)
 int   ps_r4_fsr_debug_view        = 0;      // r4-only, FSR's on-screen debug view of its internal buffers
 Fvector4 ps_r4_upscaler_signs     = { 1, 1, 1, 1 }; // r4-only, debug: motion vector x/y and jitter x/y sign multipliers
 

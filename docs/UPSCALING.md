@@ -50,7 +50,7 @@ Options → Video → Advanced (below SMAA), or the console:
 | `r4_upscaler` | `off`, `dlss`, `fsr` | applied with `vid_restart` |
 | `r4_upscaler_quality` | `ultra_performance`, `performance`, `balanced`, `quality`, `native` | applied with `vid_restart`; `native` = DLAA / FSR Native AA |
 | `r4_fsr_sharpness` | `0` to `1` | FSR only, applied immediately; `0` turns sharpening off |
-| `r4_fsr_tuning` | `velocity,shading,accumulation,disocclusion` | FSR only, applied immediately; AMD defaults `1,1,0.333,-0.333` (see `FfxFsr3UpscalerConfigureKey`) |
+| `r4_fsr_tuning` | `velocity,shading,accumulation,disocclusion` | FSR only, applied immediately; default `1,1,1,1`: full history weight, stabler on power lines and fences than the AMD defaults `1,1,0.333,-0.333` (see `FfxFsr3UpscalerConfigureKey`) |
 | `r4_fsr_debug_view` | `0` / `1` | FSR only: shows FSR's internal buffers on screen |
 | `r4_dlss_log` | `0` / `1` / `2` | NGX log into the game log (2 = verbose), applied when NGX initializes |
 | `r4_upscaler_signs` | 4 values of `1` / `-1` | debug: motion vector x/y and jitter x/y sign multipliers |
