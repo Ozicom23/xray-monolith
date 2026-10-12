@@ -1,15 +1,12 @@
 # Player release of the upscaling build for GAMMA: DX11 and DX11-AVX exes with DLSS/FSR, and the options menu files.
-# Start it from the Actions tab with a version (e.g. 1.0). It creates a DRAFT GitHub Release:
+# Push a tag named gamma-upscaling-v<version> (e.g. gamma-upscaling-v1.0) to start it. It creates a DRAFT GitHub Release:
 # check the files and notes on the Releases page, then press "Publish release".
 
 name: GAMMA upscaling release
 
 on:
-  workflow_dispatch:
-    inputs:
-      version:
-        description: "Version, e.g. 1.0"
-        required: true
+  push:
+    tags: [ "gamma-upscaling-v*" ]
 
 env:
   SOLUTION_FILE_PATH: src/engine-vs2022.sln
@@ -81,7 +78,7 @@ jobs:
 
     - name: Package
       run: |
-        v="${{ inputs.version }}"
+        v="${GITHUB_REF_NAME#gamma-upscaling-v}"
         mkdir -p engine/bin menu/gamedata/scripts menu/gamedata/configs/text/eng menu/gamedata/configs/text/rus pdb
 
         cp builds/*/*.exe engine/bin/
@@ -105,7 +102,7 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
-        v="${{ inputs.version }}"
+        v="${GITHUB_REF_NAME#gamma-upscaling-v}"
         cat > notes.md <<'EOF'
         DLSS 4 and FSR 3.1 upscaling for STALKER GAMMA (DX11 renderer).
 
@@ -124,6 +121,6 @@ jobs:
         This is an unofficial engine build, please don't report issues to GAMMA support while using it.
         EOF
         sed -i 's/^        //' notes.md
-        gh release create "gamma-upscaling-v${v}" --draft --target "${{ github.sha }}" \
+        gh release create "${GITHUB_REF_NAME}" --draft --verify-tag \
           --title "GAMMA Upscaling ${v} (DLSS / FSR)" --notes-file notes.md \
           "GAMMA-Upscaling-${v}-engine.zip" "GAMMA-Upscaling-${v}-menu-MO2.zip" "GAMMA-Upscaling-${v}-pdb.zip"
