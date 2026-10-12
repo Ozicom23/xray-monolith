@@ -194,6 +194,7 @@ public:
 	// DLSS: sub-pixel jitter for the frame being rendered, consumed by the ssfx_jitter shader constant
 	bool dlss_jitter_on;
 	Fvector2 dlss_jitter_ndc;
+	bool dlss_check();
 
 	bool m_bFirstFrameAfterReset; // Determines weather the frame is the first after resetting device.
 	xr_vector<sun::cascade> m_sun_cascades;

@@ -401,15 +401,7 @@ void CRender::create()
 	o.dx11_hdr10 = !!ps_r4_hdr10_on;
 
 	// DLSS: needs the SSS motion vectors and a single-sampled scene
-	o.dlss = FALSE;
-	if (ps_r4_dlss)
-	{
-		string_path mv_fn;
-		if (!FS.exist(mv_fn, "$game_shaders$", "r3\\screenspace_mvectors", ".h"))
-			Msg("! DLSS: disabled, Screen Space Shaders motion vectors (r3\\screenspace_mvectors.h) are not installed");
-		else if (g_DLSS.Init())
-			o.dlss = TRUE;
-	}
+	o.dlss = dlss_check() ? TRUE : FALSE;
 
 	//	MSAA option dependencies
 	o.dx10_msaa = ps_r3_msaa && !o.dx11_hdr10 && !o.dlss;
@@ -586,9 +578,34 @@ void CRender::reset_begin()
 	HWOCC.occq_destroy();
 }
 
+// DLSS needs the Screen Space Shaders motion vectors and an NVIDIA GPU with DLSS support
+bool CRender::dlss_check()
+{
+	if (!ps_r4_dlss)
+		return false;
+
+	string_path mv_fn;
+	if (!FS.exist(mv_fn, "$game_shaders$", "r3\\screenspace_mvectors", ".h"))
+	{
+		Msg("! DLSS: disabled, Screen Space Shaders motion vectors (r3\\screenspace_mvectors.h) are not installed");
+		return false;
+	}
+	return g_DLSS.Init();
+}
+
 void CRender::reset_end()
 {
 	HWOCC.occq_create(occq_size);
+
+	// DLSS can be switched with vid_restart, unless MSAA was enabled when the renderer started
+	if (!!ps_r4_dlss != !!o.dlss)
+	{
+		if (o.dx10_msaa)
+			Msg("! DLSS: turn off MSAA (r3_msaa) and restart the game to use DLSS");
+		else
+			o.dlss = dlss_check() ? TRUE : FALSE;
+		Msg("* DLSS: %s", o.dlss ? "on" : "off");
+	}
 
 	Target = xr_new<CRenderTarget>();
 
