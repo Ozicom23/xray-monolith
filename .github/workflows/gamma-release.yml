@@ -1,5 +1,5 @@
 # Player release of the upscaling build for GAMMA: DX11 and DX11-AVX exes with DLSS/FSR, and the options menu files.
-# Push a tag named gamma-upscaling-v<version> (e.g. gamma-upscaling-v1.0) to start it. It creates a DRAFT GitHub Release:
+# Push a tag named gamma-upscaling-v<version> (e.g. gamma-upscaling-v0.1) to start it. It creates a DRAFT GitHub Release:
 # check the files and notes on the Releases page, then press "Publish release".
 
 name: GAMMA upscaling release
@@ -79,23 +79,22 @@ jobs:
     - name: Package
       run: |
         v="${GITHUB_REF_NAME#gamma-upscaling-v}"
-        mkdir -p engine/bin menu/gamedata/scripts menu/gamedata/configs/text/eng menu/gamedata/configs/text/rus pdb
+        mkdir -p game/bin game/gamedata/scripts game/gamedata/configs/text/eng game/gamedata/configs/text/rus pdb
 
-        cp builds/*/*.exe engine/bin/
+        cp builds/*/*.exe game/bin/
         cp builds/*/*.pdb pdb/
 
         git -c advice.detachedHead=false clone -q --depth 1 --branch ${{ env.DLSS_SDK_TAG }} --filter=blob:none --sparse https://github.com/NVIDIA/DLSS.git dlss_sdk
         git -C dlss_sdk sparse-checkout set --no-cone /LICENSE.txt /lib/Windows_x86_64/rel/nvngx_dlss.dll
-        cp dlss_sdk/lib/Windows_x86_64/rel/nvngx_dlss.dll engine/bin/
-        cp dlss_sdk/LICENSE.txt engine/bin/nvngx_dlss_LICENSE.txt
+        cp dlss_sdk/lib/Windows_x86_64/rel/nvngx_dlss.dll game/bin/
+        cp dlss_sdk/LICENSE.txt game/bin/nvngx_dlss_LICENSE.txt
 
-        cp gamedata/scripts/ui_options_modded_exes.script menu/gamedata/scripts/
-        cp gamedata/configs/text/eng/ui_mm_modded_exes.xml menu/gamedata/configs/text/eng/
-        cp gamedata/configs/text/rus/ui_mm_modded_exes.xml menu/gamedata/configs/text/rus/
+        cp gamedata/scripts/ui_options_modded_exes.script game/gamedata/scripts/
+        cp gamedata/configs/text/eng/ui_mm_modded_exes.xml game/gamedata/configs/text/eng/
+        cp gamedata/configs/text/rus/ui_mm_modded_exes.xml game/gamedata/configs/text/rus/
 
-        ls -lR engine menu pdb
-        (cd engine && zip -r "../GAMMA-Upscaling-${v}-engine.zip" bin)
-        (cd menu && zip -r "../GAMMA-Upscaling-${v}-menu-MO2.zip" gamedata)
+        ls -lR game pdb
+        (cd game && zip -r "../GAMMA-Upscaling-${v}.zip" bin gamedata)
         (cd pdb && zip -r "../GAMMA-Upscaling-${v}-pdb.zip" .)
 
     - name: Create draft release
@@ -107,20 +106,24 @@ jobs:
         DLSS 4 and FSR 3.1 upscaling for STALKER GAMMA (DX11 renderer).
 
         **Install**
-        1. Close the game. Back up `Anomaly\bin\AnomalyDX11.exe` and `Anomaly\bin\AnomalyDX11AVX.exe`.
-        2. Extract the `engine` zip into your `Anomaly` folder (it contains `bin\`: both exes, `nvngx_dlss.dll` and its license).
-        3. In MO2, install the `menu-MO2` zip as a new mod ("Install a new mod from an archive"), enable it and put it at the bottom of the load order.
-        4. Launch "Anomaly (DX11-AVX)" or "Anomaly (DX11)" as usual and open Options > Video > Advanced > Upscaler.
+        1. Close the game. Back up these files from your `Anomaly` folder (copy them somewhere outside it):
+           - `bin\AnomalyDX11.exe` and `bin\AnomalyDX11AVX.exe`
+           - `gamedata\scripts\ui_options_modded_exes.script`
+           - `gamedata\configs\text\eng\ui_mm_modded_exes.xml` and `gamedata\configs\text\rus\ui_mm_modded_exes.xml`
+        2. Extract `GAMMA-Upscaling-%V%.zip` into your `Anomaly` folder and overwrite the files (`bin\`: both exes, `nvngx_dlss.dll` and its license; `gamedata\`: the options menu).
+        3. Launch "Anomaly (DX11-AVX)" or "Anomaly (DX11)" as usual and open Options > Video > Advanced > Upscaler.
 
         **Requirements**: DX11 renderer, Screen Space Shaders (included in GAMMA), MSAA and HDR10 off. DLSS needs an NVIDIA RTX GPU, FSR works on any DX11 GPU.
         On Linux (Proton) DLSS needs `PROTON_ENABLE_NVAPI=1`.
 
-        **Uninstall**: put the original exes back and disable the MO2 mod.
+        **Uninstall**: put the backed-up files back and delete `bin\nvngx_dlss.dll`.
 
         The `pdb` zip has debug symbols for crash reports and is not needed to play.
         This is an unofficial engine build, please don't report issues to GAMMA support while using it.
+
+        Credits: NVIDIA DLSS SDK © NVIDIA Corporation. AMD FidelityFX Super Resolution 3 © Advanced Micro Devices, MIT license. Engine: themrdemonized's xray-monolith.
         EOF
-        sed -i 's/^        //' notes.md
+        sed -i 's/^        //; s/%V%/'"${v}"'/g' notes.md
         gh release create "${GITHUB_REF_NAME}" --draft --verify-tag \
           --title "GAMMA Upscaling ${v} (DLSS / FSR)" --notes-file notes.md \
-          "GAMMA-Upscaling-${v}-engine.zip" "GAMMA-Upscaling-${v}-menu-MO2.zip" "GAMMA-Upscaling-${v}-pdb.zip"
+          "GAMMA-Upscaling-${v}.zip" "GAMMA-Upscaling-${v}-pdb.zip"
