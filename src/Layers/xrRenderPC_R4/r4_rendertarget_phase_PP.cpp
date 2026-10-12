@@ -255,11 +255,10 @@ void CRenderTarget::phase_dlss()
 		p.frame_time_ms = Device.fTimeDelta * 1000.f;
 
 		// NGX binds its own state, start and leave with a clean context
-		HW.pContext->ClearState();
-		RCache.Invalidate();
+		// (OnFrameEnd clears the D3D context and RCache's cached state)
+		RCache.OnFrameEnd();
 		m_dlss_upscaled = g_DLSS.Evaluate(p);
-		HW.pContext->ClearState();
-		RCache.Invalidate();
+		RCache.OnFrameEnd();
 
 		if (m_dlss_upscaled)
 		{
