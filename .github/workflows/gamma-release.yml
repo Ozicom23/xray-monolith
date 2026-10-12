@@ -1,0 +1,129 @@
+# Player release of the upscaling build for GAMMA: DX11 and DX11-AVX exes with DLSS/FSR, and the options menu files.
+# Start it from the Actions tab with a version (e.g. 1.0). It creates a DRAFT GitHub Release:
+# check the files and notes on the Releases page, then press "Publish release".
+
+name: GAMMA upscaling release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version, e.g. 1.0"
+        required: true
+
+env:
+  SOLUTION_FILE_PATH: src/engine-vs2022.sln
+  DLSS_SDK_TAG: v310.9.1
+
+jobs:
+  build:
+    name: build-${{ matrix.buildconf }}
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        buildconf: ["DX11", "DX11-AVX"]
+
+    steps:
+    - name: Configure Pagefile
+      uses: al-cheb/configure-pagefile-action@v1.3
+      with:
+        minimum-size: 8GB
+        maximum-size: 8GB
+        disk-root: "C:"
+
+    - name: Checkout repo
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Fetch NVIDIA DLSS SDK
+      run: |
+        $dst = "src/3rd party/NVIDIA-DLSS"
+        git -c advice.detachedHead=false clone -q --depth 1 --branch ${{ env.DLSS_SDK_TAG }} --filter=blob:none --sparse https://github.com/NVIDIA/DLSS.git "$dst"
+        git -C "$dst" sparse-checkout set --no-cone /include/ /LICENSE.txt /lib/Windows_x86_64/x64/nvsdk_ngx_d.lib
+        if (!(Test-Path "$dst/lib/Windows_x86_64/x64/nvsdk_ngx_d.lib")) { throw "DLSS SDK fetch failed" }
+
+    - name: Compile FSR shaders
+      run: powershell -ExecutionPolicy Bypass -File "src/3rd party/FidelityFX-FSR3/compile_shaders.ps1"
+
+    - name: setup-msbuild
+      uses: microsoft/setup-msbuild@v1.3.1
+      with:
+        msbuild-architecture: "x64"
+
+    - name: Build ${{ matrix.buildconf }}
+      run: msbuild /p:Configuration=${{ matrix.buildconf }} ${{ env.SOLUTION_FILE_PATH }}
+
+    - name: Upload exe and pdb
+      uses: actions/upload-artifact@v4.6.0
+      with:
+        name: ${{ matrix.buildconf }}
+        path: |
+          ./_build/_game/bin_dbg/*.exe
+          ./_build/_game/bin_dbg/*.pdb
+        if-no-files-found: "error"
+        retention-days: 7
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v4
+
+    - name: Download builds
+      uses: actions/download-artifact@v4
+      with:
+        path: builds
+
+    - name: Package
+      run: |
+        v="${{ inputs.version }}"
+        mkdir -p engine/bin menu/gamedata/scripts menu/gamedata/configs/text/eng menu/gamedata/configs/text/rus pdb
+
+        cp builds/*/*.exe engine/bin/
+        cp builds/*/*.pdb pdb/
+
+        git -c advice.detachedHead=false clone -q --depth 1 --branch ${{ env.DLSS_SDK_TAG }} --filter=blob:none --sparse https://github.com/NVIDIA/DLSS.git dlss_sdk
+        git -C dlss_sdk sparse-checkout set --no-cone /LICENSE.txt /lib/Windows_x86_64/rel/nvngx_dlss.dll
+        cp dlss_sdk/lib/Windows_x86_64/rel/nvngx_dlss.dll engine/bin/
+        cp dlss_sdk/LICENSE.txt engine/bin/nvngx_dlss_LICENSE.txt
+
+        cp gamedata/scripts/ui_options_modded_exes.script menu/gamedata/scripts/
+        cp gamedata/configs/text/eng/ui_mm_modded_exes.xml menu/gamedata/configs/text/eng/
+        cp gamedata/configs/text/rus/ui_mm_modded_exes.xml menu/gamedata/configs/text/rus/
+
+        ls -lR engine menu pdb
+        (cd engine && zip -r "../GAMMA-Upscaling-${v}-engine.zip" bin)
+        (cd menu && zip -r "../GAMMA-Upscaling-${v}-menu-MO2.zip" gamedata)
+        (cd pdb && zip -r "../GAMMA-Upscaling-${v}-pdb.zip" .)
+
+    - name: Create draft release
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        v="${{ inputs.version }}"
+        cat > notes.md <<'EOF'
+        DLSS 4 and FSR 3.1 upscaling for STALKER GAMMA (DX11 renderer).
+
+        **Install**
+        1. Close the game. Back up `Anomaly\bin\AnomalyDX11.exe` and `Anomaly\bin\AnomalyDX11AVX.exe`.
+        2. Extract the `engine` zip into your `Anomaly` folder (it contains `bin\`: both exes, `nvngx_dlss.dll` and its license).
+        3. In MO2, install the `menu-MO2` zip as a new mod ("Install a new mod from an archive"), enable it and put it at the bottom of the load order.
+        4. Launch "Anomaly (DX11-AVX)" or "Anomaly (DX11)" as usual and open Options > Video > Advanced > Upscaler.
+
+        **Requirements**: DX11 renderer, Screen Space Shaders (included in GAMMA), MSAA and HDR10 off. DLSS needs an NVIDIA RTX GPU, FSR works on any DX11 GPU.
+        On Linux (Proton) DLSS needs `PROTON_ENABLE_NVAPI=1`.
+
+        **Uninstall**: put the original exes back and disable the MO2 mod.
+
+        The `pdb` zip has debug symbols for crash reports and is not needed to play.
+        This is an unofficial engine build, please don't report issues to GAMMA support while using it.
+        EOF
+        sed -i 's/^        //' notes.md
+        gh release create "gamma-upscaling-v${v}" --draft --target "${{ github.sha }}" \
+          --title "GAMMA Upscaling ${v} (DLSS / FSR)" --notes-file notes.md \
+          "GAMMA-Upscaling-${v}-engine.zip" "GAMMA-Upscaling-${v}-menu-MO2.zip" "GAMMA-Upscaling-${v}-pdb.zip"
