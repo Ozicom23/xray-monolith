@@ -160,24 +160,33 @@ void CPerfOverlay::Draw()
 	{
 		m_refresh_ms = 0.f;
 
-		float sum = 0.f;
-		u32 n = 0;
+		// Walk back from the newest frame: FPS over the last second, 1% low over the last 5 seconds,
+		// so the numbers follow changes quickly (e.g. leaving a fast menu) instead of a fixed frame count
+		float avg_sum = 0.f, low_time = 0.f;
+		u32 avg_n = 0, low_n = 0;
 		float recent[kFrameHistory];
 		for (u32 i = 0; i < m_frame_count; ++i)
 		{
-			recent[i] = m_frame_ms[i];
-			sum += m_frame_ms[i];
-			++n;
+			const float ms = m_frame_ms[(m_frame_pos + kFrameHistory - 1 - i) % kFrameHistory];
+			if (avg_sum < 1000.f)
+			{
+				avg_sum += ms;
+				++avg_n;
+			}
+			if (low_time >= 5000.f)
+				break;
+			low_time += ms;
+			recent[low_n++] = ms;
 		}
-		const float avg_ms = n ? sum / float(n) : frame_ms;
+		const float avg_ms = avg_n ? avg_sum / float(avg_n) : frame_ms;
 		m_show_frame_ms = avg_ms;
 		m_show_fps = avg_ms > 0.f ? 1000.f / avg_ms : 0.f;
 
 		// 1% low: the frame time 99% of recent frames are faster than
-		if (n >= 10)
+		if (low_n >= 10)
 		{
-			const u32 idx = u32(float(n - 1) * 0.99f);
-			std::nth_element(recent, recent + idx, recent + n);
+			const u32 idx = u32(float(low_n - 1) * 0.99f);
+			std::nth_element(recent, recent + idx, recent + low_n);
 			m_show_low_fps = recent[idx] > 0.f ? 1000.f / recent[idx] : 0.f;
 		}
 		UpdateVram();

@@ -19,7 +19,7 @@ public:
 
 private:
 	static const u32 kGpuQueries = 4;
-	static const u32 kFrameHistory = 600;
+	static const u32 kFrameHistory = 1200; // 5 s at 240 FPS
 	static const u32 kGraphSamples = 240;
 
 	struct GpuQuery

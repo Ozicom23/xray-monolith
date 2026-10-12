@@ -16,7 +16,7 @@ Options → Video → Advanced also has **Performance Overlay** and **Overlay Po
 
 Compact:
 
-- FPS, average frame time and 1% low (refreshed 4 times per second)
+- FPS and average frame time over the last second, 1% low over the last 5 seconds (refreshed 4 times per second)
 - GPU frame time and CPU time (engine update + render submission) with a GPU-bound / CPU-bound indicator
 - VRAM used by the game and the OS budget
 - Upscaler, mode and render → output resolution, or the native resolution
