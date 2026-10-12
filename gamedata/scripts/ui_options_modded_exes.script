@@ -139,13 +139,24 @@ function on_xml_read()
 			end
 			if not already_present then
 				local for_r4 = {ui_options.for_renderer, "renderer_r4"}
+
+				-- Only offer the upscalers this GPU supports ("dlss,fsr", "fsr" or "");
+				-- nil when the engine doesn't report it (other renderers, older exes): offer both
+				local avail = get_console():get_string("r4_upscaler_available")
+				local upscaler_content = {{"off", "upscaler_off"}}
+				if not avail or string.find(avail, "dlss", 1, true) then
+					table.insert(upscaler_content, {"dlss", "upscaler_dlss"})
+				end
+				if not avail or string.find(avail, "fsr", 1, true) then
+					table.insert(upscaler_content, {"fsr", "upscaler_fsr"})
+				end
 				local rows = {
 					{
 						id           = "upscaler",
 						type         = "list",
 						val          = 0,
 						cmd          = "r4_upscaler",
-						content      = {{"off", "upscaler_off"}, {"dlss", "upscaler_dlss"}, {"fsr", "upscaler_fsr"}},
+						content      = upscaler_content,
 						vid          = true,
 						precondition = for_r4,
 					},

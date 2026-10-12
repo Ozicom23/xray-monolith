@@ -196,6 +196,7 @@ public:
 	Fvector2 upscale_jitter_ndc;
 	bool upscale_scene_active; // scene renders at upscaler resolution (also on 3D scope frames, which get no jitter)
 	u32 upscaler_check();
+	void upscaler_probe();
 
 	bool m_bFirstFrameAfterReset; // Determines weather the frame is the first after resetting device.
 	xr_vector<sun::cascade> m_sun_cascades;

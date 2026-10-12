@@ -403,6 +403,7 @@ void CRender::create()
 
 	// Upscaler (DLSS / FSR): needs the SSS motion vectors and a single-sampled scene
 	o.upscaler = upscaler_check();
+	upscaler_probe();
 
 	//	MSAA option dependencies
 	o.dx10_msaa = ps_r3_msaa && !o.dx11_hdr10 && !o.upscaler;
@@ -586,6 +587,31 @@ void CRender::reset_begin()
 }
 
 // Upscalers need the Screen Space Shaders motion vectors; DLSS also needs an NVIDIA RTX GPU
+// Which upscalers this GPU supports, for the options menu (r4_upscaler_available). DLSS is only
+// tried on NVIDIA adapters (DXVK reports NVIDIA GPUs as AMD unless NVAPI is enabled) and released
+// again when not in use, so the menu offers it only where it can start
+void CRender::upscaler_probe()
+{
+	ps_r4_upscaler_available = 0;
+	if (CUpscaler* fsr = GetUpscaler(upscaler_fsr))
+		if (fsr->Init())
+			ps_r4_upscaler_available |= 2;
+
+	if (o.upscaler == upscaler_dlss)
+		ps_r4_upscaler_available |= 1;
+	else if (HW.Caps.id_vendor == 0x10DE)
+	{
+		if (CUpscaler* dlss = GetUpscaler(upscaler_dlss))
+		{
+			if (dlss->Init())
+				ps_r4_upscaler_available |= 1;
+			dlss->Shutdown();
+		}
+	}
+	Msg("* Upscalers available: %s%s%s", (ps_r4_upscaler_available & 1) ? "DLSS " : "",
+	    (ps_r4_upscaler_available & 2) ? "FSR" : "", ps_r4_upscaler_available ? "" : "none");
+}
+
 u32 CRender::upscaler_check()
 {
 	CUpscaler* upscaler = GetUpscaler(ps_r4_upscaler);

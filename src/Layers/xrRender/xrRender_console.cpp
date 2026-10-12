@@ -357,6 +357,7 @@ xr_token perf_overlay_pos_token[] = {
 	{ 0, 0 }
 };
 int   ps_r4_dlss_log              = 0;      // r4-only, forward NGX log into the engine log, needs vid_restart
+u32   ps_r4_upscaler_available    = 0;      // r4-only, set by the renderer at startup: bit 0 DLSS, bit 1 FSR
 
 int   ps_r4_hdr10_tonemapper   		   = 0;    // r4-only, default = ACES (Narkowicz)
 int   ps_r4_hdr10_tonemap_mode 		   = 1;	   // r4-only, default = Color
@@ -587,6 +588,30 @@ class CCC_PerfOverlayToggle : public IConsole_Command
 public:
 	CCC_PerfOverlayToggle(LPCSTR N) : IConsole_Command(N) { bEmptyArgsHandled = TRUE; }
 	virtual void Execute(LPCSTR args) { ps_perf_overlay = (ps_perf_overlay + 1) % 3; }
+};
+
+// Read-only list of the upscalers this GPU supports ("dlss,fsr", "fsr" or ""), for the options menu.
+// Not saved to user.ltx; unknown to other renderers and older exes, where scripts get nil
+class CCC_UpscalerAvailable : public IConsole_Command
+{
+public:
+	CCC_UpscalerAvailable(LPCSTR N) : IConsole_Command(N) { bEmptyArgsHandled = TRUE; }
+	virtual void Execute(LPCSTR args)
+	{
+		TStatus s;
+		Status(s);
+		Msg("- %s: %s", cName, s[0] ? s : "none");
+	}
+	virtual void Status(TStatus& S)
+	{
+		S[0] = 0;
+		if (ps_r4_upscaler_available & 1)
+			xr_strcat(S, "dlss");
+		if (ps_r4_upscaler_available & 2)
+			xr_strcat(S, S[0] ? ",fsr" : "fsr");
+	}
+	virtual void Info(TInfo& I) { xr_strcpy(I, "upscalers supported on this GPU (read-only)"); }
+	virtual void Save(IWriter*) {}
 };
 
 #if defined(USE_DX10) || defined(USE_DX11)
@@ -1327,6 +1352,7 @@ void xrRender_initconsole()
 	CMD3(CCC_Token,   "perf_overlay",             &ps_perf_overlay,                  perf_overlay_token);
 	CMD3(CCC_Token,   "perf_overlay_pos",         &ps_perf_overlay_pos,              perf_overlay_pos_token);
 	CMD1(CCC_PerfOverlayToggle, "perf_overlay_toggle");
+	CMD1(CCC_UpscalerAvailable, "r4_upscaler_available");
 #endif
     CMD4(CCC_Integer, "r4_hdr10_colorspace",	  &ps_r4_hdr10_colorspace, 		     0, 2);
 
