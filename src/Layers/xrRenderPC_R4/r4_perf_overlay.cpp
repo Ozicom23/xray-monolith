@@ -2,6 +2,7 @@
 #include "r4_perf_overlay.h"
 #include "r4_upscaler.h"
 #include "../../xrEngine/Stats.h"
+#include "../../xrEngine/IGame_Persistent.h"
 
 #include <dxgi1_4.h>
 #include <algorithm>
@@ -169,6 +170,19 @@ void CPerfOverlay::Draw()
 	if (!ps_perf_overlay || frame_ms <= 0.f)
 		return;
 
+	// Start the statistics over when the main or pause menu opens or closes: menu frames are much faster
+	// than gameplay and would keep the numbers off until they leave the time windows
+	IMainMenu* menu = g_pGamePersistent ? g_pGamePersistent->m_pMainMenu : nullptr;
+	const bool in_menu = menu && menu->IsActive();
+	if (in_menu != m_in_menu)
+	{
+		m_in_menu = in_menu;
+		m_frame_count = 0;
+		m_show_fps = 0.f;
+		m_show_low_fps = 0.f;
+		return; // this frame spans the switch
+	}
+
 	m_frame_ms[m_frame_pos] = frame_ms;
 	m_frame_pos = (m_frame_pos + 1) % kFrameHistory;
 	m_frame_count = _min(m_frame_count + 1, kFrameHistory);
@@ -181,15 +195,15 @@ void CPerfOverlay::Draw()
 	{
 		m_refresh_ms = 0.f;
 
-		// Walk back from the newest frame: FPS over the last second, 1% low over the last 5 seconds,
-		// so the numbers follow changes quickly (e.g. leaving a fast menu) instead of a fixed frame count
+		// Walk back from the newest frame: FPS over the last half second, 1% low over the last 5 seconds,
+		// so the numbers follow changes quickly instead of a fixed frame count
 		float avg_sum = 0.f, low_time = 0.f;
 		u32 avg_n = 0, low_n = 0;
 		float recent[kFrameHistory];
 		for (u32 i = 0; i < m_frame_count; ++i)
 		{
 			const float ms = m_frame_ms[(m_frame_pos + kFrameHistory - 1 - i) % kFrameHistory];
-			if (avg_sum < 1000.f)
+			if (avg_sum < 500.f)
 			{
 				avg_sum += ms;
 				++avg_n;
@@ -204,7 +218,8 @@ void CPerfOverlay::Draw()
 		m_show_fps = avg_ms > 0.f ? 1000.f / avg_ms : 0.f;
 
 		// 1% low: the frame time 99% of recent frames are faster than
-		if (low_n >= 10)
+		// Needs enough frames to mean something, shown as "-" until then
+		if (low_n >= 100)
 		{
 			const u32 idx = u32(float(low_n - 1) * 0.99f);
 			std::nth_element(recent, recent + idx, recent + low_n);
@@ -233,7 +248,10 @@ void CPerfOverlay::Draw()
 	{
 		ImGui::SetWindowFontScale(_max(1.f, io.DisplaySize.y / 1080.f));
 
-		ImGui::Text("%4.0f FPS   %5.2f ms   1%% low %4.0f", m_show_fps, m_show_frame_ms, m_show_low_fps);
+		if (m_show_low_fps > 0.f)
+			ImGui::Text("%4.0f FPS   %5.2f ms   1%% low %4.0f", m_show_fps, m_show_frame_ms, m_show_low_fps);
+		else
+			ImGui::Text("%4.0f FPS   %5.2f ms   1%% low    -", m_show_fps, m_show_frame_ms);
 
 		const CStats* st = Device.Statistic;
 		// Engine update + render submission; RenderTOTAL includes Present, which waits for vsync/the GPU

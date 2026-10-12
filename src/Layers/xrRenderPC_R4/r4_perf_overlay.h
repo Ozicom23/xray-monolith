@@ -60,6 +60,7 @@ private:
 	float m_show_fps = 0.f;
 	float m_show_frame_ms = 0.f;
 	float m_show_low_fps = 0.f;
+	bool m_in_menu = false;
 
 	struct IDXGIAdapter3* m_adapter3 = nullptr;
 	bool m_vram_failed = false;
