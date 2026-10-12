@@ -38,7 +38,7 @@ Detailed adds:
 | Resolution, upscaler | the render target's upscaler state |
 | Draw calls, triangles | `RCache.stat` at the end of the frame |
 
-Code: `src/Layers/xrRenderPC_R4/r4_perf_overlay.*`, hooked from `dxRenderDeviceRender::Begin/End` (GPU timing) and `CRender::OnFrame` (drawing).
+Code: `src/Layers/xrRenderPC_R4/r4_perf_overlay.*`, hooked from `dxRenderDeviceRender::Begin/End` (GPU timing). The window is built in the render pass just before ImGui renders (`seqRender` priority -4); building it earlier in the frame crashed when a `vid_restart` in the same frame recreated ImGui's font texture.
 
 GPU-bound means GPU time is at least 90% of the frame time. With a frame cap or vsync both values are below the frame time, and the indicator shows "CPU-bound / capped".
 

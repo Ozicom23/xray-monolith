@@ -547,6 +547,9 @@ void CRender::create()
 	FluidManager.SetScreenSize(Target->upscale_render_width(), Target->upscale_render_height()); // scene resolution
 
 	Device.ModelDefferClear = xr_make_delegate(Models, &CModelPool::DeleteQueuedDeffer);
+
+	// Just before ImGui itself renders (priority -5)
+	Device.seqRender.Add(&g_PerfOverlay, -4);
 }
 
 void CRender::destroy()
@@ -560,6 +563,7 @@ void CRender::destroy()
 	xr_delete(Target);
 	for (u32 type = upscaler_dlss; type <= upscaler_fsr; ++type)
 		GetUpscaler(type)->Shutdown();
+	Device.seqRender.Remove(&g_PerfOverlay);
 	g_PerfOverlay.Destroy();
 	PSLibrary.OnDestroy();
 	Device.seqFrame.Remove(this);
@@ -643,8 +647,6 @@ void CRender::OnFrame()
 
 	if (Details)
 		g_pGamePersistent->GrassBendersUpdateAnimations();
-
-	g_PerfOverlay.Draw();
 }
 
 // Particles

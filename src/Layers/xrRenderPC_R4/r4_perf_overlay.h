@@ -2,14 +2,17 @@
 
 // In-game performance overlay (console: perf_overlay, perf_overlay_pos, perf_overlay_toggle).
 // Display-only ImGui window: frame and GPU times, VRAM, render/output resolution, engine CPU timers.
-class CPerfOverlay
+class CPerfOverlay : public pureRender
 {
 public:
 	// GPU frame timing, called from dxRenderDeviceRender::Begin / End (before Present)
 	void GpuFrameBegin();
 	void GpuFrameEnd();
 
-	// Builds the ImGui window, called once per frame from CRender::OnFrame (inside the ImGui frame)
+	// Builds the ImGui window in the render pass, just before the engine renders ImGui (seqRender priority
+	// -4, ImGui is -5). Recording earlier in the frame is unsafe: a vid_restart later in the same frame
+	// recreates ImGui's font texture and the recorded commands would point to the released one.
+	void OnRender() override { Draw(); }
 	void Draw();
 
 	void Destroy();
