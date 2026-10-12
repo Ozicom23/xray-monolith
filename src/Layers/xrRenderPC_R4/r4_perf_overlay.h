@@ -9,6 +9,10 @@ public:
 	void GpuFrameBegin();
 	void GpuFrameEnd();
 
+	// Time spent in Present (vsync / waiting for the GPU), subtracted from the CPU time
+	void PresentBegin();
+	void PresentEnd();
+
 	// Builds the ImGui window in the render pass, just before the engine renders ImGui (seqRender priority
 	// -4, ImGui is -5). Recording earlier in the frame is unsafe: a vid_restart later in the same frame
 	// recreates ImGui's font texture and the recorded commands would point to the released one.
@@ -40,6 +44,9 @@ private:
 	bool m_queries_failed = false;
 	float m_gpu_ms = 0.f;
 
+	CTimer m_present_timer;
+	float m_present_ms = 0.f;
+
 	CTimer m_frame_timer;
 	bool m_frame_timer_started = false;
 	float m_frame_ms[kFrameHistory] = {};
@@ -58,6 +65,7 @@ private:
 	bool m_vram_failed = false;
 	float m_vram_used_gb = 0.f;
 	float m_vram_budget_gb = 0.f;
+	float m_vram_total_gb = 0.f; // dedicated video memory of the adapter
 
 	u32 m_draw_calls = 0;
 	u32 m_polys = 0;

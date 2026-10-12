@@ -54,7 +54,7 @@ namespace
 		ID3D11DeviceContext* context;
 		Dx11Resource resources[kMaxResources];
 		u32 next_static;  // grows up from 1 (0 is the null resource)
-		u32 next_dynamic; // grows down, reset every frame by UnregisterResources
+		u32 next_dynamic; // grows down: external (engine) textures, kept for the life of the context
 		ID3D11Buffer* cb[FFX_MAX_NUM_CONST_BUFFERS];
 		u32 cb_size[FFX_MAX_NUM_CONST_BUFFERS];
 		ID3D11SamplerState* samplers[2]; // s0 point clamp, s1 linear clamp
@@ -361,6 +361,8 @@ namespace
 		return FFX_OK;
 	}
 
+	// External (engine) textures are the same every frame for the life of the context (the context is
+	// recreated with the render targets), so their views are created once and reused
 	FfxErrorCode ffx_RegisterResource(FfxInterface* iface, const FfxResource* in, FfxUInt32, FfxResourceInternal* out)
 	{
 		Backend* b = get_backend(iface);
@@ -369,18 +371,30 @@ namespace
 			out->internalIndex = 0; // null resource
 			return FFX_OK;
 		}
+
+		ID3D11Resource* res = (ID3D11Resource*)in->resource;
+		for (u32 i = b->next_dynamic + 1; i < kMaxResources; ++i)
+		{
+			if (b->resources[i].resource == res)
+			{
+				out->internalIndex = int32_t(i);
+				return FFX_OK;
+			}
+		}
+
 		if (b->next_dynamic <= b->next_static)
 			return FFX_ERROR_OUT_OF_MEMORY;
 
 		const u32 index = b->next_dynamic--;
 		Dx11Resource& r = b->resources[index];
 		release_resource(r);
-		r.resource = (ID3D11Resource*)in->resource;
+		r.resource = res;
 		r.owned = false;
 		r.desc = in->description;
 		if (!create_views(b, r))
 		{
 			release_resource(r);
+			++b->next_dynamic;
 			out->internalIndex = 0;
 			return FFX_ERROR_BACKEND_API_ERROR;
 		}
@@ -389,12 +403,9 @@ namespace
 		return FFX_OK;
 	}
 
-	FfxErrorCode ffx_UnregisterResources(FfxInterface* iface, FfxCommandList, FfxUInt32)
+	// Views of external textures stay cached until the backend context is destroyed
+	FfxErrorCode ffx_UnregisterResources(FfxInterface*, FfxCommandList, FfxUInt32)
 	{
-		Backend* b = get_backend(iface);
-		for (u32 i = b->next_dynamic + 1; i < kMaxResources; ++i)
-			release_resource(b->resources[i]);
-		b->next_dynamic = kMaxResources - 1;
 		return FFX_OK;
 	}
 

@@ -194,6 +194,7 @@ public:
 	// Upscaler: sub-pixel jitter for the frame being rendered, consumed by the ssfx_jitter shader constant
 	bool upscale_jitter_on;
 	Fvector2 upscale_jitter_ndc;
+	bool upscale_scene_active; // scene renders at upscaler resolution (also on 3D scope frames, which get no jitter)
 	u32 upscaler_check();
 
 	bool m_bFirstFrameAfterReset; // Determines weather the frame is the first after resetting device.

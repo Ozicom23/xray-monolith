@@ -126,8 +126,8 @@ static class cl_pos_decompress_params : public R_constant_setup
 		float VertTan = -1.0f * tanf(deg2rad(Device.fFOV / 2.0f));
 		float HorzTan = - VertTan / Device.fASPECT;
 
-		RCache.set_c(C, HorzTan, VertTan, (2.0f * HorzTan) / (float)Device.dwWidth,
-		             (2.0f * VertTan) / (float)Device.dwHeight);
+		RCache.set_c(C, HorzTan, VertTan, (2.0f * HorzTan) / (float)Device.dwRenderWidth,
+		             (2.0f * VertTan) / (float)Device.dwRenderHeight);
 	}
 } binder_pos_decompress_params;
 
@@ -135,8 +135,8 @@ static class cl_pos_decompress_params2 : public R_constant_setup
 {
 	virtual void setup(R_constant* C)
 	{
-		RCache.set_c(C, (float)Device.dwWidth, (float)Device.dwHeight, 1.0f / (float)Device.dwWidth,
-		             1.0f / (float)Device.dwHeight);
+		RCache.set_c(C, (float)Device.dwRenderWidth, (float)Device.dwRenderHeight, 1.0f / (float)Device.dwRenderWidth,
+		             1.0f / (float)Device.dwRenderHeight);
 	}
 } binder_pos_decompress_params2;
 
@@ -592,6 +592,13 @@ u32 CRender::upscaler_check()
 	if (!upscaler)
 		return upscaler_off;
 
+	// Both upscalers are set up for tonemapped SDR input; with HDR10 the scene color is not tonemapped yet
+	if (o.dx11_hdr10)
+	{
+		Msg("! %s: disabled, not supported together with HDR10 (r4_hdr10_on)", upscaler->Name());
+		return upscaler_off;
+	}
+
 	string_path mv_fn;
 	if (!FS.exist(mv_fn, "$game_shaders$", "r3\\screenspace_mvectors", ".h"))
 	{
@@ -608,10 +615,17 @@ void CRender::reset_end()
 	// The upscaler can be switched with vid_restart, unless MSAA was enabled when the renderer started
 	if (ps_r4_upscaler != o.upscaler)
 	{
+		const u32 previous = o.upscaler;
 		if (o.dx10_msaa)
 			Msg("! Upscaler: turn off MSAA (r3_msaa) and restart the game to use DLSS or FSR");
 		else
 			o.upscaler = upscaler_check();
+
+		// Free the one no longer used (e.g. NGX when switching from DLSS to FSR)
+		if (previous != o.upscaler)
+			if (CUpscaler* old_upscaler = GetUpscaler(previous))
+				old_upscaler->Shutdown();
+
 		CUpscaler* upscaler = GetUpscaler(o.upscaler);
 		Msg("* Upscaler: %s", upscaler ? upscaler->Name() : "off");
 	}
@@ -919,7 +933,7 @@ void CRender::rmNormal()
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
 CRender::CRender()
-	: m_bFirstFrameAfterReset(false), upscale_jitter_on(false)
+	: m_bFirstFrameAfterReset(false), upscale_jitter_on(false), upscale_scene_active(false)
 {
 	upscale_jitter_ndc.set(0.f, 0.f);
 	init_cacades();

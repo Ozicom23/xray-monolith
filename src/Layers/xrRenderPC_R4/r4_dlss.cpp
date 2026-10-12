@@ -73,13 +73,14 @@ bool CDLSS::Init()
 		Msg("! DLSS: NGX init failed (0x%08x). NVIDIA GPU/driver required (under Wine/Proton: dxvk-nvapi)", u32(res));
 		return false;
 	}
+	m_ngx_ready = true;
 
 	NVSDK_NGX_Parameter* params = nullptr;
 	res = NVSDK_NGX_D3D11_GetCapabilityParameters(&params);
 	if (NVSDK_NGX_FAILED(res) || !params)
 	{
 		Msg("! DLSS: NGX capability query failed (0x%08x)", u32(res));
-		NVSDK_NGX_D3D11_Shutdown1(HW.pDevice);
+		ReleaseNGX();
 		return false;
 	}
 	m_params = params;
@@ -99,7 +100,7 @@ bool CDLSS::Init()
 		int init_result = 0;
 		NVSDK_NGX_Parameter_GetI(params, NVSDK_NGX_Parameter_SuperSampling_FeatureInitResult, &init_result);
 		Msg("! DLSS: Super Resolution not available (init result 0x%08x). Is nvngx_dlss.dll next to the exe?", u32(init_result));
-		Shutdown();
+		ReleaseNGX();
 		return false;
 	}
 
@@ -108,7 +109,8 @@ bool CDLSS::Init()
 	return true;
 }
 
-void CDLSS::Shutdown()
+// Releases NGX but keeps m_initialized, so a failed Init() is not retried on every vid_restart
+void CDLSS::ReleaseNGX()
 {
 	ReleaseFeature();
 	if (m_params)
@@ -116,10 +118,16 @@ void CDLSS::Shutdown()
 		NVSDK_NGX_D3D11_DestroyParameters((NVSDK_NGX_Parameter*)m_params);
 		m_params = nullptr;
 	}
-	if (m_initialized)
+	if (m_ngx_ready)
 		NVSDK_NGX_D3D11_Shutdown1(HW.pDevice);
-	m_initialized = false;
+	m_ngx_ready = false;
 	m_available = false;
+}
+
+void CDLSS::Shutdown()
+{
+	ReleaseNGX();
+	m_initialized = false;
 }
 
 void CDLSS::GetRenderSize(u32 out_w, u32 out_h, u32 quality, u32& render_w, u32& render_h)
@@ -224,6 +232,8 @@ bool CDLSS::Init()
 	m_available = false;
 	return false;
 }
+
+void CDLSS::ReleaseNGX() {}
 
 void CDLSS::Shutdown()
 {

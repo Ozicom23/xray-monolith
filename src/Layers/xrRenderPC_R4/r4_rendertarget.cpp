@@ -186,8 +186,8 @@ void CRenderTarget::u_stencil_optimize(eStencilOptimizeMode eSOM)
 	VERIFY(RImplementation.o.nvstencil);
 	//RCache.set_ColorWriteEnable	(FALSE);
 	u32 Offset;
-	float _w = float(Device.dwWidth);
-	float _h = float(Device.dwHeight);
+	float _w = float(Device.dwRenderWidth);
+	float _h = float(Device.dwRenderHeight);
 	u32 C = color_rgba(255, 255, 255, 255);
 	float eps = 0;
 	float _dw = 0.5f;
@@ -223,8 +223,8 @@ void CRenderTarget::u_stencil_optimize(eStencilOptimizeMode eSOM)
 // 2D texgen (texture adjustment matrix)
 void CRenderTarget::u_compute_texgen_screen(Fmatrix& m_Texgen)
 {
-	//float	_w						= float(Device.dwWidth);
-	//float	_h						= float(Device.dwHeight);
+	//float	_w						= float(Device.dwRenderWidth);
+	//float	_h						= float(Device.dwRenderHeight);
 	//float	o_w						= (.5f / _w);
 	//float	o_h						= (.5f / _h);
 	Fmatrix m_TexelAdjust =
@@ -253,8 +253,8 @@ void CRenderTarget::u_compute_texgen_jitter(Fmatrix& m_Texgen_J)
 	m_Texgen_J.mul(m_TexelAdjust, RCache.xforms.m_wvp);
 
 	// rescale - tile it
-	float scale_X = float(Device.dwWidth) / float(TEX_jitter);
-	float scale_Y = float(Device.dwHeight) / float(TEX_jitter);
+	float scale_X = float(Device.dwRenderWidth) / float(TEX_jitter);
+	float scale_Y = float(Device.dwRenderHeight) / float(TEX_jitter);
 	//float	offset			= (.5f / float(TEX_jitter));
 	m_TexelAdjust.scale(scale_X, scale_Y, 1.f);
 	//m_TexelAdjust.translate_over(offset,	offset,	0	);
@@ -365,8 +365,11 @@ CRenderTarget::CRenderTarget()
 		Msg		("dx10_MSAA_opt = on" );
 #endif // DEBUG
 
-	// Upscaler: every scene target below is built at the internal render resolution,
-	// Device.dwWidth/dwHeight are restored to the output resolution at the end of the constructor
+	// Upscaler: every scene target below is built at the internal render resolution.
+	// Device.dwRenderWidth/dwRenderHeight (renderer-only, game code keeps reading dwWidth/dwHeight)
+	// are restored to the output resolution at the end of the constructor
+	Device.dwRenderWidth = Device.dwWidth;
+	Device.dwRenderHeight = Device.dwHeight;
 	b_postprocess_upscaled = nullptr;
 	m_upscaler = GetUpscaler(RImplementation.o.upscaler);
 	m_upscale_enabled = false;
@@ -389,8 +392,8 @@ CRenderTarget::CRenderTarget()
 		{
 			m_upscale_enabled = true;
 			m_upscale_jitter_phases = CUpscaler::GetJitterPhaseCount(m_upscale_render_w, m_upscale_output_w);
-			Device.dwWidth = m_upscale_render_w;
-			Device.dwHeight = m_upscale_render_h;
+			Device.dwRenderWidth = m_upscale_render_w;
+			Device.dwRenderHeight = m_upscale_render_h;
 		}
 		else
 		{
@@ -523,7 +526,7 @@ CRenderTarget::CRenderTarget()
 	}
 	//	NORMAL
 	{
-		u32 w = Device.dwWidth, h = Device.dwHeight;
+		u32 w = Device.dwRenderWidth, h = Device.dwRenderHeight;
 		rt_Position.create(r2_RT_P, w, h, D3DFMT_A16B16G16R16F, SampleCount);
 
 		if (RImplementation.o.dx10_msaa)
@@ -929,8 +932,8 @@ CRenderTarget::CRenderTarget()
 
 	//SMAA
 	{
-		u32 w = Device.dwWidth;
-		u32 h = Device.dwHeight;
+		u32 w = Device.dwRenderWidth;
+		u32 h = Device.dwRenderHeight;
 
 		rt_smaa_edgetex.create(r2_RT_smaa_edgetex, w, h, D3DFMT_A8R8G8B8);
 		rt_smaa_blendtex.create(r2_RT_smaa_blendtex, w, h, D3DFMT_A8R8G8B8);
@@ -957,7 +960,7 @@ CRenderTarget::CRenderTarget()
 			FLOAT ColorRGBA[4] = { 127.0f / 255.0f, 127.0f / 255.0f, 127.0f / 255.0f, 127.0f / 255.0f };
 			HW.pContext->ClearRenderTargetView(rt_LUM_pool[it]->pRT, ColorRGBA);
 		}
-		u_setrt(Device.dwWidth, Device.dwHeight, HW.pBaseRT,NULL,NULL, HW.pBaseZB);
+		u_setrt(Device.dwRenderWidth, Device.dwRenderHeight, HW.pBaseRT,NULL,NULL, HW.pBaseZB);
 	}
 
 	// HBAO
@@ -967,13 +970,13 @@ CRenderTarget::CRenderTarget()
 		u32 h = 0;
 		if (RImplementation.o.ssao_half_data)
 		{
-			w = Device.dwWidth / 2;
-			h = Device.dwHeight / 2;
+			w = Device.dwRenderWidth / 2;
+			h = Device.dwRenderHeight / 2;
 		}
 		else
 		{
-			w = Device.dwWidth;
-			h = Device.dwHeight;
+			w = Device.dwRenderWidth;
+			h = Device.dwRenderHeight;
 		}
 
 		D3DFORMAT fmt = HW.Caps.id_vendor == 0x10DE ? D3DFMT_R32F : D3DFMT_R16F;
@@ -984,7 +987,7 @@ CRenderTarget::CRenderTarget()
 
 	//if (RImplementation.o.ssao_blur_on)
 	//{
-	//	u32		w = Device.dwWidth, h = Device.dwHeight;
+	//	u32		w = Device.dwRenderWidth, h = Device.dwRenderHeight;
 	//	rt_ssao_temp.create			(r2_RT_ssao_temp, w, h, D3DFMT_G16R16F, SampleCount);
 	//	s_ssao.create				(b_ssao, "r2\\ssao");
 
@@ -1002,7 +1005,7 @@ CRenderTarget::CRenderTarget()
 	// HDAO
 	if (RImplementation.o.ssao_hdao && RImplementation.o.ssao_ultra)
 	{
-		u32 w = Device.dwWidth, h = Device.dwHeight;
+		u32 w = Device.dwRenderWidth, h = Device.dwRenderHeight;
 		rt_ssao_temp.create(r2_RT_ssao_temp, w, h, D3DFMT_R16F, 1, true);
 		s_hdao_cs.create(b_hdao_cs, "r2\\ssao");
 		if (RImplementation.o.dx10_msaa)
@@ -1342,18 +1345,18 @@ CRenderTarget::CRenderTarget()
 		b_postprocess_upscaled = xr_new<CBlender_postprocess_upscaled>();
 		s_postprocess_upscaled.create(b_postprocess_upscaled, "r4\\postprocess_upscaled");
 
-		Device.dwWidth = m_upscale_output_w;
-		Device.dwHeight = m_upscale_output_h;
+		Device.dwRenderWidth = m_upscale_output_w;
+		Device.dwRenderHeight = m_upscale_output_h;
 	}
 	g_svp_keep_main_prev = m_upscale_enabled;
 
-	// Sample textures as sharp as at output resolution (NVIDIA and AMD recommend log2(render / output))
+	// Sample scene textures as sharp as at output resolution (NVIDIA and AMD recommend log2(render / output)),
+	// applied by phase_scene_begin
 	r__upscaler_mip_bias = m_upscale_enabled ? log2f(float(m_upscale_render_w) / float(m_upscale_output_w)) : 0.f;
-	SSManager.SetMipLODBias(ps_r__tf_Mipbias + r__upscaler_mip_bias);
 
 	//
-	dwWidth = Device.dwWidth;
-	dwHeight = Device.dwHeight;
+	dwWidth = Device.dwRenderWidth;
+	dwHeight = Device.dwRenderHeight;
 }
 
 CRenderTarget::~CRenderTarget()
@@ -1508,8 +1511,8 @@ void CRenderTarget::reset_light_marker(bool bResetStencil)
 	if (bResetStencil)
 	{
 		u32 Offset;
-		float _w = float(Device.dwWidth);
-		float _h = float(Device.dwHeight);
+		float _w = float(Device.dwRenderWidth);
+		float _h = float(Device.dwRenderHeight);
 		u32 C = color_rgba(255, 255, 255, 255);
 		float eps = 0;
 		float _dw = 0.5f;

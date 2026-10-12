@@ -22,8 +22,11 @@ public:
 	bool Evaluate(const UpscalerEvalParams& p) override;
 
 private:
-	bool m_initialized = false;
+	void ReleaseNGX();
+
+	bool m_initialized = false; // Init() ran (successfully or not), not retried until Shutdown()
 	bool m_available = false;
+	bool m_ngx_ready = false;   // NVSDK_NGX_D3D11_Init succeeded, needs NVSDK_NGX_D3D11_Shutdown1
 	void* m_params = nullptr; // NVSDK_NGX_Parameter*
 	void* m_handle = nullptr; // NVSDK_NGX_Handle*
 	u32 m_eval_failures = 0;

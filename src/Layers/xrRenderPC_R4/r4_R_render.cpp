@@ -20,7 +20,7 @@ void CRender::render_menu()
 	// output (without the distortion effect) instead of squeezing it into the smaller targets
 	if (Target->upscale_enabled())
 	{
-		Target->u_setrt(Device.dwWidth, Device.dwHeight, HW.pBaseRT, NULL, NULL, HW.pBaseZB);
+		Target->u_setrt(Device.dwRenderWidth, Device.dwRenderHeight, HW.pBaseRT, NULL, NULL, HW.pBaseZB);
 		rmNormal();
 		g_pGamePersistent->OnRenderPPUI_main(); // PP-UI
 		return;
@@ -41,15 +41,15 @@ void CRender::render_menu()
 	}
 
 	// Actual Display
-	Target->u_setrt(Device.dwWidth, Device.dwHeight, HW.pBaseRT,NULL,NULL, HW.pBaseZB);
+	Target->u_setrt(Device.dwRenderWidth, Device.dwRenderHeight, HW.pBaseRT,NULL,NULL, HW.pBaseZB);
 	RCache.set_Shader(Target->s_menu);
 	RCache.set_Geometry(Target->g_menu);
 
 	Fvector2 p0, p1;
 	u32 Offset;
 	auto C = color_rgba(255, 255, 255, 255);
-	float _w = float(Device.dwWidth);
-	float _h = float(Device.dwHeight);
+	float _w = float(Device.dwRenderWidth);
+	float _h = float(Device.dwRenderHeight);
 	float d_Z = EPS_S;
 	float d_W = 1.f;
 	p0.set(.5f / _w, .5f / _h);
@@ -89,7 +89,7 @@ void CRender::Render()
 	if (!(g_pGameLevel && g_hud)
 		|| bMenu)
 	{
-		Target->u_setrt(Device.dwWidth, Device.dwHeight, HW.pBaseRT,NULL,NULL, HW.pBaseZB);
+		Target->u_setrt(Device.dwRenderWidth, Device.dwRenderHeight, HW.pBaseRT,NULL,NULL, HW.pBaseZB);
 		return;
 	}
 
@@ -149,7 +149,7 @@ void CRender::Render()
 
     if (RImplementation.o.ssfx_motionvectors)
     {
-        Target->u_setrt(Device.dwWidth, Device.dwHeight, 0, 0, Target->rt_ssfx_motion_vectors->pRT, 0);
+        Target->u_setrt(Device.dwRenderWidth, Device.dwRenderHeight, 0, 0, Target->rt_ssfx_motion_vectors->pRT, 0);
 
         FLOAT ColorRGBA[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
         HW.pContext->ClearRenderTargetView(Target->rt_ssfx_motion_vectors->pRT, ColorRGBA);
@@ -165,7 +165,7 @@ void CRender::Render()
 
 	if (ps_r2_ls_flags.test(R2FLAG_TERRAIN_PREPASS))
 	{
-		Target->u_setrt(Device.dwWidth, Device.dwHeight, NULL, NULL, NULL, !RImplementation.o.dx10_msaa ? HW.pBaseZB : Target->rt_MSAADepth->pZRT);
+		Target->u_setrt(Device.dwRenderWidth, Device.dwRenderHeight, NULL, NULL, NULL, !RImplementation.o.dx10_msaa ? HW.pBaseZB : Target->rt_MSAADepth->pZRT);
 	}
 
 	//******* Main render :: PART-0	-- first

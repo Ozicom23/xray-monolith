@@ -103,6 +103,20 @@ void CPerfOverlay::GpuFrameEnd()
 	m_query_active = false;
 }
 
+void CPerfOverlay::PresentBegin()
+{
+	if (ps_perf_overlay)
+		m_present_timer.Start();
+}
+
+void CPerfOverlay::PresentEnd()
+{
+	if (!ps_perf_overlay)
+		return;
+	const float ms = m_present_timer.GetElapsed_sec() * 1000.f;
+	m_present_ms = m_present_ms > 0.f ? m_present_ms * 0.9f + ms * 0.1f : ms;
+}
+
 void CPerfOverlay::UpdateVram()
 {
 	if (m_vram_failed)
@@ -112,6 +126,13 @@ void CPerfOverlay::UpdateVram()
 		m_adapter3 = nullptr;
 		m_vram_failed = true;
 		return;
+	}
+
+	if (m_vram_total_gb <= 0.f)
+	{
+		DXGI_ADAPTER_DESC desc = {};
+		if (SUCCEEDED(m_adapter3->GetDesc(&desc)))
+			m_vram_total_gb = float(double(desc.DedicatedVideoMemory) / (1024.0 * 1024.0 * 1024.0));
 	}
 
 	DXGI_QUERY_VIDEO_MEMORY_INFO info = {};
@@ -215,7 +236,8 @@ void CPerfOverlay::Draw()
 		ImGui::Text("%4.0f FPS   %5.2f ms   1%% low %4.0f", m_show_fps, m_show_frame_ms, m_show_low_fps);
 
 		const CStats* st = Device.Statistic;
-		const float cpu_ms = st ? st->EngineTOTAL.result + st->RenderTOTAL.result : 0.f;
+		// Engine update + render submission; RenderTOTAL includes Present, which waits for vsync/the GPU
+		const float cpu_ms = st ? _max(0.f, st->EngineTOTAL.result + st->RenderTOTAL.result - m_present_ms) : 0.f;
 		if (m_gpu_ms > 0.f)
 		{
 			const bool gpu_bound = m_gpu_ms >= m_show_frame_ms * 0.9f;
@@ -229,8 +251,11 @@ void CPerfOverlay::Draw()
 		else
 			ImGui::Text("GPU   n/a     CPU %5.2f ms", cpu_ms);
 
-		if (m_vram_budget_gb > 0.f)
-			ImGui::Text("VRAM %.2f / %.2f GB", m_vram_used_gb, m_vram_budget_gb);
+		// Budget is what the OS/driver lets the game use before evicting, below the card's total
+		if (m_vram_budget_gb > 0.f && m_vram_total_gb > 0.f)
+			ImGui::Text("VRAM %.2f GB used, budget %.1f / %.1f GB", m_vram_used_gb, m_vram_budget_gb, m_vram_total_gb);
+		else if (m_vram_budget_gb > 0.f)
+			ImGui::Text("VRAM %.2f GB used, budget %.1f GB", m_vram_used_gb, m_vram_budget_gb);
 
 		CRenderTarget* target = RImplementation.Target;
 		CUpscaler* upscaler = GetUpscaler(RImplementation.o.upscaler);

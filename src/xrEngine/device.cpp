@@ -464,10 +464,12 @@ void CRenderDevice::on_idle()
 	//RCache.set_xform_project ( mProject );
 	D3DXMatrixInverse((D3DXMATRIX*)&mInvFullTransform, 0, (D3DXMATRIX*)&mFullTransform);
 
+	vCameraPosition_saved = vCameraPosition;
+	mFullTransform_saved = mFullTransform;
+	// Only the matrices that become next frame's mView_prev/mProject_prev are held on 3D scope frames;
+	// vCameraPosition_saved and mFullTransform_saved are this frame's camera for detail and culling threads
 	if (!(g_svp_keep_main_prev && m_SecondViewport.IsSVPFrame()))
 	{
-		vCameraPosition_saved = vCameraPosition;
-		mFullTransform_saved = mFullTransform;
 		mView_saved = mView;
 		mProject_saved = mProject;
 	}

@@ -18,7 +18,7 @@ Compact:
 
 - FPS and average frame time over the last second, 1% low over the last 5 seconds (refreshed 4 times per second)
 - GPU frame time and CPU time (engine update + render submission) with a GPU-bound / CPU-bound indicator
-- VRAM used by the game and the OS budget
+- VRAM used by the game, the budget the OS/driver gives it (below the physical total, which other apps and driver reserves share) and the card's total
 - Upscaler, mode and render → output resolution, or the native resolution
 
 Detailed adds:

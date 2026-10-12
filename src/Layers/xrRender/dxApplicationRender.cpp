@@ -89,8 +89,8 @@ void dxApplicationRender::load_draw_internal(CApplication& owner)
 	//	HW.pContext->ClearDepthStencilView( RCache.get_ZB(), D3D_CLEAR_DEPTH|D3D_CLEAR_STENCIL, 1.0f, 0);
 #endif	//	USE_DX10
 
-	float _w = (float)Device.dwWidth;
-	float _h = (float)Device.dwHeight;
+	float _w = (float)Device.dwRenderWidth;
+	float _h = (float)Device.dwRenderHeight;
 	bool b_ws = (_w / _h) > 1.34f;
 	bool b_16x9 = b_ws && ((_w / _h) > 1.77f);
 	float ws_k = (b_16x9) ? 0.75f : 0.8333f; //16:9 or 16:10

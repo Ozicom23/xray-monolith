@@ -697,12 +697,12 @@ IC float 				_y2real			(float y)
 #else
 IC float _x2real(float x)
 {
-	return (x + 1) * Device.dwWidth * 0.5f;
+	return (x + 1) * Device.dwRenderWidth * 0.5f;
 }
 
 IC float _y2real(float y)
 {
-	return (y + 1) * Device.dwHeight * 0.5f;
+	return (y + 1) * Device.dwRenderHeight * 0.5f;
 }
 #endif
 
@@ -1302,8 +1302,8 @@ void CDrawUtilities::DrawAxis(const Fmatrix& T)
 	u32 vBase;
 	FVF::TL* pv = (FVF::TL*)Stream->Lock(6, vs_TL->vb_stride, vBase);
 	// transform to screen
-	float dx = -float(Device.dwWidth) / 2.2f;
-	float dy = float(Device.dwHeight) / 2.25f;
+	float dx = -float(Device.dwRenderWidth) / 2.2f;
+	float dy = float(Device.dwRenderHeight) / 2.25f;
 
 	for (int i = 0; i < 6; i++, pv++)
 	{

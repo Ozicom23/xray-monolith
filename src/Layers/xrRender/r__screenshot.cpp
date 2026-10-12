@@ -22,8 +22,8 @@ IC u32 convert(float c)
 
 IC void MouseRayFromPoint(Fvector& direction, int x, int y, Fmatrix& m_CamMat)
 {
-	int halfwidth = Device.dwWidth / 2;
-	int halfheight = Device.dwHeight / 2;
+	int halfwidth = Device.dwRenderWidth / 2;
+	int halfheight = Device.dwRenderHeight / 2;
 
 	Ivector2 point2;
 	point2.set(x - halfwidth, halfheight - y);
@@ -204,7 +204,7 @@ void CRender::ScreenshotImpl(ScreenshotMode mode, LPCSTR name, CMemoryWriter* me
 		// Swap r and b, but don't kill alpha
 		{
 			u32* pPixel = (u32*)MappedData.pData;
-			u32* pEnd = pPixel + (Device.dwWidth * Device.dwHeight);
+			u32* pEnd = pPixel + (Device.dwRenderWidth * Device.dwRenderHeight);
 
 			for (; pPixel != pEnd; pPixel++)
 			{
@@ -213,8 +213,8 @@ void CRender::ScreenshotImpl(ScreenshotMode mode, LPCSTR name, CMemoryWriter* me
 			}
 		}
 
-		u32* data = (u32*)xr_malloc(Device.dwHeight * Device.dwHeight * 4);
-		imf_Process(data, Device.dwHeight, Device.dwHeight, (u32*)MappedData.pData, Device.dwWidth, Device.dwHeight, imf_lanczos3);
+		u32* data = (u32*)xr_malloc(Device.dwRenderHeight * Device.dwRenderHeight * 4);
+		imf_Process(data, Device.dwRenderHeight, Device.dwRenderHeight, (u32*)MappedData.pData, Device.dwRenderWidth, Device.dwRenderHeight, imf_lanczos3);
 #ifdef USE_DX11
 		HW.pContext->Unmap(pTex, 0);
 #else
@@ -225,9 +225,9 @@ void CRender::ScreenshotImpl(ScreenshotMode mode, LPCSTR name, CMemoryWriter* me
 
 		TGAdesc p;
 		p.format = IMG_24B;
-		p.scanlenght = Device.dwHeight * 4;
-		p.width = Device.dwHeight;
-		p.height = Device.dwHeight;
+		p.scanlenght = Device.dwRenderHeight * 4;
+		p.width = Device.dwRenderHeight;
+		p.height = Device.dwRenderHeight;
 		p.data = data;
 		p.maketga(*fs);
 		xr_free(data);
@@ -249,7 +249,7 @@ void CRender::ScreenshotImpl(ScreenshotMode mode, LPCSTR name, CMemoryWriter* me
 	IDirect3DSurface9* pFB;
 	D3DLOCKED_RECT D;
 
-	HRESULT hr = HW.pDevice->CreateOffscreenPlainSurface(Device.dwWidth, Device.dwHeight, HW.DevPP.BackBufferFormat,
+	HRESULT hr = HW.pDevice->CreateOffscreenPlainSurface(Device.dwRenderWidth, Device.dwRenderHeight, HW.DevPP.BackBufferFormat,
 	                                                     D3DPOOL_SYSTEMMEM, &pFB, nullptr);
 	if (FAILED(hr)) return;
 
@@ -261,7 +261,7 @@ void CRender::ScreenshotImpl(ScreenshotMode mode, LPCSTR name, CMemoryWriter* me
 
 	// Image processing (gamma-correct)
 	u32* pPixel = (u32*)D.pBits;
-	u32* pEnd = pPixel + (Device.dwWidth * Device.dwHeight);
+	u32* pEnd = pPixel + (Device.dwRenderWidth * Device.dwRenderHeight);
 
 	//	Kill alpha
 	for (; pPixel != pEnd; pPixel++)
@@ -390,12 +390,12 @@ void CRender::ScreenshotImpl(ScreenshotMode mode, LPCSTR name, CMemoryWriter* me
 			if (hr != D3D_OK) goto _end_;
 
 			// save
-			u32* data = (u32*)xr_malloc(Device.dwHeight * Device.dwHeight * 4);
-			imf_Process(data, Device.dwHeight, Device.dwHeight, (u32*)D.pBits, Device.dwWidth, Device.dwHeight,
+			u32* data = (u32*)xr_malloc(Device.dwRenderHeight * Device.dwRenderHeight * 4);
+			imf_Process(data, Device.dwRenderHeight, Device.dwRenderHeight, (u32*)D.pBits, Device.dwRenderWidth, Device.dwRenderHeight,
 			            imf_lanczos3);
-			p.scanlenght = Device.dwHeight * 4;
-			p.width = Device.dwHeight;
-			p.height = Device.dwHeight;
+			p.scanlenght = Device.dwRenderHeight * 4;
+			p.width = Device.dwRenderHeight;
+			p.height = Device.dwRenderHeight;
 			p.data = data;
 			p.maketga(*fs);
 			xr_free(data);
@@ -451,7 +451,7 @@ void CRender::ScreenshotAsyncEnd(CMemoryWriter& memory_writer)
 
 	{
 		u32* pPixel = (u32*)MappedData.pData;
-		u32* pEnd = pPixel + (Device.dwWidth * Device.dwHeight);
+		u32* pEnd = pPixel + (Device.dwRenderWidth * Device.dwRenderHeight);
 
 		//	Kill alpha and swap r and b.
 		for (; pPixel != pEnd; pPixel++)
@@ -464,9 +464,9 @@ void CRender::ScreenshotAsyncEnd(CMemoryWriter& memory_writer)
 			);
 		}
 
-		memory_writer.w(&Device.dwWidth, sizeof(Device.dwWidth));
-		memory_writer.w(&Device.dwHeight, sizeof(Device.dwHeight));
-		memory_writer.w(MappedData.pData, (Device.dwWidth * Device.dwHeight) * 4);
+		memory_writer.w(&Device.dwRenderWidth, sizeof(Device.dwRenderWidth));
+		memory_writer.w(&Device.dwRenderHeight, sizeof(Device.dwRenderHeight));
+		memory_writer.w(MappedData.pData, (Device.dwRenderWidth * Device.dwRenderHeight) * 4);
 	}
 
 #ifdef USE_DX11
@@ -497,8 +497,8 @@ void CRender::ScreenshotAsyncEnd(CMemoryWriter& memory_writer)
 	u32 rtWidth = Target->get_rtwidth();
 	u32 rtHeight = Target->get_rtheight();
 #else	//	RENDER != R_R1
-	u32 rtWidth = Device.dwWidth;
-	u32 rtHeight = Device.dwHeight;
+	u32 rtWidth = Device.dwRenderWidth;
+	u32 rtHeight = Device.dwRenderHeight;
 #endif	//	RENDER != R_R1
 
 	// Image processing (gamma-correct)
@@ -581,8 +581,8 @@ void CRender::TakeScreenshot(LPCSTR path, Fvector2 dimensions, DxEncoding encodi
 	FS.update_path(fname, "$game_textures$", fname);
 
 	// Clamp image dimensions
-	int actual_width = Device.dwWidth;
-	int actual_height = Device.dwHeight;
+	int actual_width = Device.dwRenderWidth;
+	int actual_height = Device.dwRenderHeight;
 	int width = dimensions.x;
 	int height = dimensions.y;
 	clamp(width, 0, actual_width);
@@ -683,8 +683,8 @@ void CRender::TakeScreenshot(LPCSTR path, Fvector2 dimensions, DxEncoding encodi
 	FS.update_path(fname, "$game_textures$", fname);
 
 	// Clamp image dimensions
-	int actual_width = Device.dwWidth;
-	int actual_height = Device.dwHeight;
+	int actual_width = Device.dwRenderWidth;
+	int actual_height = Device.dwRenderHeight;
 	int width = int(dimensions.x);
 	int height = int(dimensions.y);
 	clamp(width, 0, actual_width);
@@ -715,7 +715,7 @@ void CRender::TakeScreenshot(LPCSTR path, Fvector2 dimensions, DxEncoding encodi
 	// Create temp-surface
 	IDirect3DSurface9* pFB;
 	D3DLOCKED_RECT D;
-	HRESULT hr = HW.pDevice->CreateOffscreenPlainSurface(Device.dwWidth, Device.dwHeight, HW.DevPP.BackBufferFormat,
+	HRESULT hr = HW.pDevice->CreateOffscreenPlainSurface(Device.dwRenderWidth, Device.dwRenderHeight, HW.DevPP.BackBufferFormat,
 		D3DPOOL_SYSTEMMEM, &pFB, nullptr);
 	if (FAILED(hr)) return;
 
@@ -726,7 +726,7 @@ void CRender::TakeScreenshot(LPCSTR path, Fvector2 dimensions, DxEncoding encodi
 	if (FAILED(hr)) goto _end_;
 	// Image processing (gamma-correct)
 	u32* pPixel = (u32*)D.pBits;
-	u32* pEnd = pPixel + (Device.dwWidth * Device.dwHeight);
+	u32* pEnd = pPixel + (Device.dwRenderWidth * Device.dwRenderHeight);
 	//	Kill alpha
 	for (; pPixel != pEnd; pPixel++)
 	{

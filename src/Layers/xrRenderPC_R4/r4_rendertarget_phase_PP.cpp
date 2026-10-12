@@ -24,8 +24,8 @@ void CRenderTarget::u_calc_tc_noise(Fvector2& p0, Fvector2& p1)
 	u32 shift_h = im_noise_shift_h;
 	float start_u = (float(shift_w) + .5f) / (tw);
 	float start_v = (float(shift_h) + .5f) / (th);
-	u32 _w = Device.dwWidth;
-	u32 _h = Device.dwHeight;
+	u32 _w = Device.dwRenderWidth;
+	u32 _h = Device.dwRenderHeight;
 	u32 cnt_w = _w / tw;
 	u32 cnt_h = _h / th;
 	float end_u = start_u + float(cnt_w) + 1;
@@ -40,7 +40,7 @@ void CRenderTarget::u_calc_tc_duality_ss(Fvector2& r0, Fvector2& r1, Fvector2& l
 	// Calculate ordinaty TCs from blur and SS
 	float tw = float(dwWidth);
 	float th = float(dwHeight);
-	if (dwHeight != Device.dwHeight) param_blur = 1.f;
+	if (dwHeight != Device.dwRenderHeight) param_blur = 1.f;
 	Fvector2 shift, p0, p1;
 	shift.set(.5f / tw, .5f / th);
 	shift.mul(param_blur);
@@ -115,7 +115,7 @@ struct TL_2c3uv
 void CRenderTarget::phase_pp()
 {
 	// combination/postprocess
-	u_setrt(Device.dwWidth, Device.dwHeight, HW.pBaseRT,NULL,NULL, HW.pBaseZB);
+	u_setrt(Device.dwRenderWidth, Device.dwRenderHeight, HW.pBaseRT,NULL,NULL, HW.pBaseZB);
 	//	Element 0 for for normal post-process
 	//	Element 4 for color map post-process
 	bool bCMap = u_need_CM();
@@ -147,8 +147,8 @@ void CRenderTarget::phase_pp()
 
 	// Draw full-screen quad textured with our scene image
 	u32 Offset;
-	float _w = float(Device.dwWidth);
-	float _h = float(Device.dwHeight);
+	float _w = float(Device.dwRenderWidth);
+	float _h = float(Device.dwRenderHeight);
 
 	Fvector2 n0, n1, r0, r1, l0, l1;
 	u_calc_tc_duality_ss(r0, r1, l0, l1);
@@ -183,10 +183,11 @@ void CRenderTarget::upscale_begin_scene()
 		return;
 	m_upscale_in_scene = true;
 
-	Device.dwWidth = m_upscale_render_w;
-	Device.dwHeight = m_upscale_render_h;
+	Device.dwRenderWidth = m_upscale_render_w;
+	Device.dwRenderHeight = m_upscale_render_h;
 	m_upscale_saved_zb = HW.pBaseZB;
 	HW.pBaseZB = rt_upscale_depth->pZRT;
+	RImplementation.upscale_scene_active = true;
 
 	// Second viewport (3D scope) frames are not fed to the upscaler, render them without jitter
 	if (Device.m_SecondViewport.IsSVPFrame())
@@ -213,16 +214,17 @@ void CRenderTarget::upscale_begin_scene()
 void CRenderTarget::upscale_end_scene()
 {
 	RImplementation.upscale_jitter_on = false;
+	RImplementation.upscale_scene_active = false;
 	if (!m_upscale_in_scene)
 		return;
 	m_upscale_in_scene = false;
 
-	Device.dwWidth = m_upscale_output_w;
-	Device.dwHeight = m_upscale_output_h;
+	Device.dwRenderWidth = m_upscale_output_w;
+	Device.dwRenderHeight = m_upscale_output_h;
 	HW.pBaseZB = m_upscale_saved_zb;
 	m_upscale_saved_zb = nullptr;
 
-	u_setrt(Device.dwWidth, Device.dwHeight, HW.pBaseRT, NULL, NULL, HW.pBaseZB);
+	u_setrt(Device.dwRenderWidth, Device.dwRenderHeight, HW.pBaseRT, NULL, NULL, HW.pBaseZB);
 	RImplementation.rmNormal();
 }
 

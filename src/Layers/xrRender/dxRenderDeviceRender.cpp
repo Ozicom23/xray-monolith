@@ -90,6 +90,8 @@ void dxRenderDeviceRender::Reset(HWND hWnd, u32& dwWidth, u32& dwHeight, float& 
 
 	fWidth_2 = float(dwWidth / 2);
 	fHeight_2 = float(dwHeight / 2);
+	Device.dwRenderWidth = dwWidth;
+	Device.dwRenderHeight = dwHeight;
 	Resources->reset_end();
 
 #ifdef DEBUG
@@ -105,7 +107,7 @@ void dxRenderDeviceRender::SetupStates()
 	//	TODO: DX10: Implement Resetting of render states into default mode
 	//VERIFY(!"dxRenderDeviceRender::SetupStates not implemented.");
 	SSManager.SetMaxAnisotropy(ps_r__tf_Anisotropic);
-	SSManager.SetMipLODBias(ps_r__tf_Mipbias + r__upscaler_mip_bias);
+	SSManager.SetMipLODBias(ps_r__tf_Mipbias);
 #else	//	USE_DX10
 	for (u32 i = 0; i < HW.Caps.raster.dwStages; i++)
 	{
@@ -188,6 +190,8 @@ void dxRenderDeviceRender::Create(HWND hWnd, u32& dwWidth, u32& dwHeight, float&
 #endif	//	USE_DX10
 	fWidth_2 = float(dwWidth / 2);
 	fHeight_2 = float(dwHeight / 2);
+	Device.dwRenderWidth = dwWidth;
+	Device.dwRenderHeight = dwHeight;
 	Resources = xr_new<CResourceManager>();
 }
 
@@ -253,10 +257,10 @@ void dxRenderDeviceRender::overdrawEnd()
 		u32 c = D3DCOLOR_XRGB(_c, _c, _c);
 
 		FVF::TL pv[4];
-		pv[0].set(float(0), float(Device.dwHeight), c, 0, 0);
+		pv[0].set(float(0), float(Device.dwRenderHeight), c, 0, 0);
 		pv[1].set(float(0), float(0), c, 0, 0);
-		pv[2].set(float(Device.dwWidth), float(Device.dwHeight), c, 0, 0);
-		pv[3].set(float(Device.dwWidth), float(0), c, 0, 0);
+		pv[2].set(float(Device.dwRenderWidth), float(Device.dwRenderHeight), c, 0, 0);
+		pv[3].set(float(Device.dwRenderWidth), float(0), c, 0, 0);
 
 		CHK_DX(HW.pDevice->SetRenderState ( D3DRS_STENCILREF, I ));
 		CHK_DX(HW.pDevice->DrawPrimitiveUP ( D3DPT_TRIANGLESTRIP, 2, pv, sizeof(FVF::TL) ));
@@ -419,7 +423,13 @@ void dxRenderDeviceRender::End()
 # endif
 
 	if (!Device.m_SecondViewport.IsSVPFrame() && !Device.m_SecondViewport.isCamReady) {
+#ifdef USE_DX11
+		g_PerfOverlay.PresentBegin();
+#endif
 		HW.m_pSwapChain->Present(present_interval, present_flags);
+#ifdef USE_DX11
+		g_PerfOverlay.PresentEnd();
+#endif
 	}
 #else //!USE_DX10 || USE_DX11
 	CHK_DX(HW.pDevice->EndScene());

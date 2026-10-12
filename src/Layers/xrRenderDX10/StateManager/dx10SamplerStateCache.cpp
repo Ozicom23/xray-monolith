@@ -226,6 +226,36 @@ void dx10SamplerStateCache::SetMipLODBias(float uiMipLODBias)
 }
 
 
+void dx10SamplerStateCache::SetMaxAnisotropyAndMipLODBias(u32 uiMaxAniso, float fMipLODBias)
+{
+	clamp(uiMaxAniso, (u32)1, (u32)16);
+
+	if (m_uiMaxAnisotropy == uiMaxAniso && m_uiMipLODBias == fMipLODBias)
+		return;
+
+	m_uiMaxAnisotropy = uiMaxAniso;
+	m_uiMipLODBias = fMipLODBias;
+
+	for (u32 i = 0; i < m_StateArray.size(); ++i)
+	{
+		StateRecord& rec = m_StateArray[i];
+		StateDecs desc;
+
+		if (!rec.m_pState)
+			continue;
+
+		rec.m_pState->GetDesc(&desc);
+
+		desc.MaxAnisotropy = m_uiMaxAnisotropy;
+		desc.MipLODBias = m_uiMipLODBias;
+		dx10StateUtils::ValidateState(desc);
+
+		// This can cause fragmentation if called too often
+		rec.m_pState->Release();
+		CreateState(desc, &rec.m_pState);
+	}
+}
+
 void dx10SamplerStateCache::ResetDeviceState()
 {
 	for (int i = 0; i < sizeof(m_aPSSamplers) / sizeof(m_aPSSamplers[0]); ++i)

@@ -152,7 +152,7 @@ float ps_r__ssaHZBvsTEX = 96.f; //RO
 int ps_r__tf_Anisotropic = 8;
 float ps_r__tf_Mipbias = 0.0f;
 // Extra texture LOD bias while an upscaler renders below output resolution: log2(render / output).
-// Set by the renderer, added to r__tf_mipbias.
+// Set by the renderer, added to r__tf_mipbias for scene materials (G-buffer passes).
 float r__upscaler_mip_bias = 0.0f;
 // R1
 float ps_r1_ssaLOD_A = 64.f;
@@ -694,7 +694,7 @@ public:
 		//	TODO: DX10: Implement mip bias control
 		//VERIFY(!"apply not implmemented.");
 		//Done. Thanks for reminding me.
-		SSManager.SetMipLODBias(*value + r__upscaler_mip_bias);
+		SSManager.SetMipLODBias(*value);
 #else	//	USE_DX10
 		for (u32 i = 0; i < HW.Caps.raster.dwStages; i++)
 			CHK_DX(HW.pDevice->SetSamplerState( i, D3DSAMP_MIPMAPLODBIAS, *((LPDWORD) value)));

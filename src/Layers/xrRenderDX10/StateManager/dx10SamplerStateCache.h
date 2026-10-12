@@ -33,6 +33,8 @@ public:
 
 	void SetMaxAnisotropy(u32 uiMaxAniso);
 	void SetMipLODBias(float uiMipLODBias);
+	// Both at once, rebuilding the sampler states only once
+	void SetMaxAnisotropyAndMipLODBias(u32 uiMaxAniso, float fMipLODBias);
 
 	//	Marks all device sample as unused
 	void ResetDeviceState();

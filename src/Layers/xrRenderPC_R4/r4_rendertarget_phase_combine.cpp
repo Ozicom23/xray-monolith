@@ -15,7 +15,7 @@ void CRenderTarget::DoAsyncScreenshot()
 		HRESULT hr;
 
 		//	HACK: unbind RT. CopyResourcess needs src and targetr to be unbound.
-		//u_setrt				( Device.dwWidth,Device.dwHeight,HW.pBaseRT,NULL,NULL,HW.pBaseZB);
+		//u_setrt				( Device.dwRenderWidth,Device.dwRenderHeight,HW.pBaseRT,NULL,NULL,HW.pBaseZB);
 
 		//ID3DTexture2D *pTex = 0;
 		//if (RImplementation.o.dx10_msaa)
@@ -238,8 +238,8 @@ void CRenderTarget::phase_combine()
 
 		/*
 		// Fill VB
-		//float	_w					= float(Device.dwWidth);
-		//float	_h					= float(Device.dwHeight);
+		//float	_w					= float(Device.dwRenderWidth);
+		//float	_h					= float(Device.dwRenderHeight);
 		//p0.set						(.5f/_w, .5f/_h);
 		//p1.set						((_w+.5f)/_w, (_h+.5f)/_h );
 		//p0.set						(.5f/_w, .5f/_h);
@@ -259,8 +259,8 @@ void CRenderTarget::phase_combine()
 		*/
 
 		// Fill VB
-		float scale_X = float(Device.dwWidth) / float(TEX_jitter);
-		float scale_Y = float(Device.dwHeight) / float(TEX_jitter);
+		float scale_X = float(Device.dwRenderWidth) / float(TEX_jitter);
+		float scale_Y = float(Device.dwRenderHeight) / float(TEX_jitter);
 
 		// Fill vertex buffer
 		FVF::TL* pv = (FVF::TL*)RCache.Vertex.Lock(4, g_combine->vb_stride, Offset);
@@ -352,8 +352,8 @@ void CRenderTarget::phase_combine()
 		else
 			u_setrt(rt_ssfx_temp, 0, 0, 0);
 
-		float w = float(Device.dwWidth);
-		float h = float(Device.dwHeight);
+		float w = float(Device.dwRenderWidth);
+		float h = float(Device.dwRenderHeight);
 
 		// Render Scale
 		set_viewport_size(HW.pContext, w / ps_ssfx_water.x, h / ps_ssfx_water.x);
@@ -575,8 +575,8 @@ void CRenderTarget::phase_combine()
 		phase_fakescope(); //crookr
 	}
 
-    //SMAA, the upscaler does its own anti-aliasing
-	if (ps_smaa_quality && !m_upscale_in_scene)
+    //SMAA, the upscaler does its own anti-aliasing (3D scope frames are not upscaled, keep SMAA there)
+	if (ps_smaa_quality && !(m_upscale_in_scene && !Device.m_SecondViewport.IsSVPFrame()))
 	{
         //PIX_EVENT(SMAA);
         phase_smaa();
@@ -603,14 +603,14 @@ void CRenderTarget::phase_combine()
 	if (RImplementation.o.dx10_msaa)
 	{
 		if (PP_Complex) u_setrt(rt_Generic, 0, 0, HW.pBaseZB); // LDR RT
-		else u_setrt(Device.dwWidth, Device.dwHeight, HW.pBaseRT,NULL,NULL, HW.pBaseZB);
+		else u_setrt(Device.dwRenderWidth, Device.dwRenderHeight, HW.pBaseRT,NULL,NULL, HW.pBaseZB);
 	}
 	else
 	{
 		if (PP_Complex) u_setrt(rt_Color, 0, 0, HW.pBaseZB); // LDR RT
-		else u_setrt(Device.dwWidth, Device.dwHeight, HW.pBaseRT,NULL,NULL, HW.pBaseZB);
+		else u_setrt(Device.dwRenderWidth, Device.dwRenderHeight, HW.pBaseRT,NULL,NULL, HW.pBaseZB);
 	}
-	//. u_setrt				( Device.dwWidth,Device.dwHeight,HW.pBaseRT,NULL,NULL,HW.pBaseZB);
+	//. u_setrt				( Device.dwRenderWidth,Device.dwRenderHeight,HW.pBaseRT,NULL,NULL,HW.pBaseZB);
 	RCache.set_CullMode(CULL_NONE);
 	RCache.set_Stencil(FALSE);
 
@@ -631,8 +631,8 @@ void CRenderTarget::phase_combine()
 			Fvector4 uv6;
 		};
 
-		float _w = float(Device.dwWidth);
-		float _h = float(Device.dwHeight);
+		float _w = float(Device.dwRenderWidth);
+		float _h = float(Device.dwRenderHeight);
 		float ddw = 1.f / _w;
 		float ddh = 1.f / _h;
 		p0.set(.5f / _w, .5f / _h);
@@ -798,8 +798,8 @@ void CRenderTarget::phase_combine()
 	/*
 	if (0)		{
 		u32		C					= color_rgba	(255,255,255,255);
-		float	_w					= float(Device.dwWidth)/3;
-		float	_h					= float(Device.dwHeight)/3;
+		float	_w					= float(Device.dwRenderWidth)/3;
+		float	_h					= float(Device.dwRenderHeight)/3;
 
 		// draw light-spheres
 #ifdef DEBUG
@@ -896,8 +896,8 @@ void CRenderTarget::phase_combine_volumetric()
 	RCache.set_ColorWriteEnable(D3DCOLORWRITEENABLE_RED | D3DCOLORWRITEENABLE_GREEN | D3DCOLORWRITEENABLE_BLUE);
 	{
 		// Fill VB
-		//float scale_X = float(Device.dwWidth) / float(TEX_jitter);
-		//float scale_Y = float(Device.dwHeight) / float(TEX_jitter);
+		//float scale_X = float(Device.dwRenderWidth) / float(TEX_jitter);
+		//float scale_Y = float(Device.dwRenderHeight) / float(TEX_jitter);
 
 		// Fill vertex buffer
 		FVF::TL* pv = (FVF::TL*)RCache.Vertex.Lock(4, g_combine->vb_stride, Offset);

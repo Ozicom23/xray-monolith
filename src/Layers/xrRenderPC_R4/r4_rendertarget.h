@@ -524,7 +524,7 @@ public:
 	void phase_pp();
 
 	// Upscaler: the 3D scene renders at upscale_render_width() x upscale_render_height() and is upscaled before phase_pp.
-	// Between upscale_begin_scene() and upscale_end_scene() Device.dwWidth/dwHeight and HW.pBaseZB
+	// Between upscale_begin_scene() and upscale_end_scene() Device.dwRenderWidth/dwHeight and HW.pBaseZB
 	// describe the render resolution, so the existing passes need no changes.
 	bool upscale_enabled() const { return m_upscale_enabled; }
 	bool upscale_in_scene() const { return m_upscale_in_scene; }

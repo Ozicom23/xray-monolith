@@ -29,6 +29,7 @@ env:
   DX9AVX: DX9-AVX
   DX8AVX: DX8-AVX
   PACK_GAMEDATA_NAME: 00_modded_exes_gamedata.db0
+  DLSS_SDK_TAG: v310.9.1
 
 jobs:
   pack_gamedata:
@@ -93,6 +94,17 @@ jobs:
       
     - name: Init submodules
       uses: snickerbockers/submodules-init@v4
+
+    - name: Fetch NVIDIA DLSS SDK
+      run: |
+        $dst = "src/3rd party/NVIDIA-DLSS"
+        git -c advice.detachedHead=false clone -q --depth 1 --branch ${{env.DLSS_SDK_TAG}} --filter=blob:none --sparse https://github.com/NVIDIA/DLSS.git "$dst"
+        git -C "$dst" sparse-checkout set --no-cone /include/ /LICENSE.txt /lib/Windows_x86_64/x64/nvsdk_ngx_d.lib
+        if (!(Test-Path "$dst/lib/Windows_x86_64/x64/nvsdk_ngx_d.lib")) { throw "DLSS SDK fetch failed" }
+
+    - name: Compile FSR shaders
+      run: |
+        if (Test-Path "src/3rd party/FidelityFX-FSR3/compile_shaders.ps1") { powershell -ExecutionPolicy Bypass -File "src/3rd party/FidelityFX-FSR3/compile_shaders.ps1" }
 
     - name: setup-msbuild
       uses: microsoft/setup-msbuild@v1.3.1
@@ -201,6 +213,17 @@ jobs:
 
     - name: Init submodules
       uses: snickerbockers/submodules-init@v4
+
+    - name: Fetch NVIDIA DLSS SDK
+      run: |
+        $dst = "src/3rd party/NVIDIA-DLSS"
+        git -c advice.detachedHead=false clone -q --depth 1 --branch ${{env.DLSS_SDK_TAG}} --filter=blob:none --sparse https://github.com/NVIDIA/DLSS.git "$dst"
+        git -C "$dst" sparse-checkout set --no-cone /include/ /LICENSE.txt /lib/Windows_x86_64/x64/nvsdk_ngx_d.lib
+        if (!(Test-Path "$dst/lib/Windows_x86_64/x64/nvsdk_ngx_d.lib")) { throw "DLSS SDK fetch failed" }
+
+    - name: Compile FSR shaders
+      run: |
+        if (Test-Path "src/3rd party/FidelityFX-FSR3/compile_shaders.ps1") { powershell -ExecutionPolicy Bypass -File "src/3rd party/FidelityFX-FSR3/compile_shaders.ps1" }
 
     - name: setup-msbuild
       uses: microsoft/setup-msbuild@v1.3.1
@@ -337,6 +360,13 @@ jobs:
         mv ${{env.DX8AVX}}_mt_exe/*.exe release_mt/bin
         unzip ${{env.DX11}}_mt_pdb/*.zip -d release_mt/bin
         unzip ${{env.DX11AVX}}_mt_pdb/*.zip -d release_mt/bin
+
+        git -c advice.detachedHead=false clone -q --depth 1 --branch ${{env.DLSS_SDK_TAG}} --filter=blob:none --sparse https://github.com/NVIDIA/DLSS.git dlss_sdk
+        git -C dlss_sdk sparse-checkout set --no-cone /LICENSE.txt /lib/Windows_x86_64/rel/nvngx_dlss.dll
+        for dir in release release_mt; do
+          cp dlss_sdk/lib/Windows_x86_64/rel/nvngx_dlss.dll $dir/bin/
+          cp dlss_sdk/LICENSE.txt $dir/bin/nvngx_dlss_LICENSE.txt
+        done
 
         cd release
         zip -r 'STALKER-Anomaly-modded-exes_${{steps.datetime.outputs.today}}.zip' ./*

@@ -8,8 +8,8 @@ void CRenderTarget::phase_gasmask_dudv()
 
 	float d_Z = EPS_S;
 	float d_W = 1.0f;
-	float w = float(Device.dwWidth);
-	float h = float(Device.dwHeight);
+	float w = float(Device.dwRenderWidth);
+	float h = float(Device.dwRenderHeight);
 
 	Fvector2 p0, p1;
 #if defined(USE_DX10) || defined(USE_DX11)	

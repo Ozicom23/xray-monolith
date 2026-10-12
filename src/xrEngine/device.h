@@ -47,6 +47,11 @@ class ENGINE_API CRenderDeviceData
 public:
 	u32 dwWidth;
 	u32 dwHeight;
+	// Size the renderer draws at. Equals dwWidth/dwHeight, except while an upscaler (DLSS/FSR) renders
+	// the 3D scene below output resolution. Only the renderer reads it: game logic runs in parallel
+	// with rendering and must keep seeing the real screen size in dwWidth/dwHeight.
+	u32 dwRenderWidth;
+	u32 dwRenderHeight;
 	u32 clientWidth;
 	u32 clientHeight;
 

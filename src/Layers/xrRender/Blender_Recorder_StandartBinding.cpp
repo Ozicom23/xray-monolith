@@ -82,8 +82,8 @@ class cl_texgen : public R_constant_setup
 			0.5f, 0.5f, 0.0f, 1.0f
 		};
 #else	//	USE_DX10
-		float _w = float(RDEVICE.dwWidth);
-		float _h = float(RDEVICE.dwHeight);
+		float _w = float(RDEVICE.dwRenderWidth);
+		float _h = float(RDEVICE.dwRenderHeight);
 		float o_w = (.5f / _w);
 		float o_h = (.5f / _h);
 		Fmatrix mTexelAdjust =
@@ -118,8 +118,8 @@ class cl_VPtexgen : public R_constant_setup
 			0.5f, 0.5f, 0.0f, 1.0f
 		};
 #else	//	USE_DX10
-		float _w = float(RDEVICE.dwWidth);
-		float _h = float(RDEVICE.dwHeight);
+		float _w = float(RDEVICE.dwRenderWidth);
+		float _h = float(RDEVICE.dwRenderHeight);
 		float o_w = (.5f / _w);
 		float o_h = (.5f / _h);
 		Fmatrix mTexelAdjust =
@@ -611,8 +611,8 @@ static class cl_screen_res : public R_constant_setup
 {
 	virtual void setup(R_constant* C)
 	{
-		RCache.set_c(C, (float)RDEVICE.dwWidth, (float)RDEVICE.dwHeight, 1.0f / (float)RDEVICE.dwWidth,
-		             1.0f / (float)RDEVICE.dwHeight);
+		RCache.set_c(C, (float)RDEVICE.dwRenderWidth, (float)RDEVICE.dwRenderHeight, 1.0f / (float)RDEVICE.dwRenderWidth,
+		             1.0f / (float)RDEVICE.dwRenderHeight);
 	}
 } binder_screen_res;
 
@@ -1168,6 +1168,12 @@ static class ssfx_jitter : public R_constant_setup
 			RCache.set_c(C, RImplementation.upscale_jitter_ndc.x, RImplementation.upscale_jitter_ndc.y, ps_ssfx_taa.x, ps_ssfx_taa.w);
 			return;
 		}
+		// 3D scope frames while upscaling: neither upscaler nor SSS TAA resolves them, so no jitter
+		if (RImplementation.upscale_scene_active)
+		{
+			RCache.set_c(C, 0.f, 0.f, ps_ssfx_taa.x, ps_ssfx_taa.w);
+			return;
+		}
 
 		if (ps_ssfx_taa.x > 0 && RImplementation.o.ssfx_taa)
 		{
@@ -1179,8 +1185,8 @@ static class ssfx_jitter : public R_constant_setup
 				{  0.0f,  1.0f }
 			};
 
-			JitterX = TAA_Offset[ Device.dwFrame % 4 ].x / Device.dwWidth;
-			JitterY = TAA_Offset[ Device.dwFrame % 4 ].y / Device.dwHeight;
+			JitterX = TAA_Offset[ Device.dwFrame % 4 ].x / Device.dwRenderWidth;
+			JitterY = TAA_Offset[ Device.dwFrame % 4 ].y / Device.dwRenderHeight;
 		}
 #endif
 
