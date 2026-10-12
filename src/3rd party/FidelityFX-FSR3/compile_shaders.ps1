@@ -44,7 +44,7 @@ foreach ($shader in Get-ChildItem "$PSScriptRoot\shaders\*.hlsl") {
         foreach ($d in $defines + "FFX_FSR3UPSCALER_OPTION_APPLY_SHARPENING=$sharpen") { $fxcArgs += @("/D", $d) }
         $fxcArgs += $shader.FullName
 
-        & $fxc.FullName @args
+        & $fxc.FullName @fxcArgs
         if ($LASTEXITCODE -ne 0) {
             Write-Host "FAILED: $name (sharpen=$sharpen)"
             $failed++
