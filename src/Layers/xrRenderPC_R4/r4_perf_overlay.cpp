@@ -65,7 +65,8 @@ void CPerfOverlay::CollectGpuTimes()
 		if (!dj.Disjoint && dj.Frequency && t1 > t0)
 		{
 			const float ms = float(double(t1 - t0) * 1000.0 / double(dj.Frequency));
-			m_gpu_ms = m_gpu_ms > 0.f ? m_gpu_ms * 0.9f + ms * 0.1f : ms;
+			m_sum.gpu += ms;
+			++m_sum.gpu_n;
 		}
 	}
 }
@@ -116,8 +117,7 @@ void CPerfOverlay::PresentEnd()
 {
 	if (!ps_perf_overlay)
 		return;
-	const float ms = m_present_timer.GetElapsed_sec() * 1000.f;
-	m_present_ms = m_present_ms > 0.f ? m_present_ms * 0.9f + ms * 0.1f : ms;
+	m_present_ms = m_present_timer.GetElapsed_sec() * 1000.f;
 }
 
 void CPerfOverlay::UpdateVram()
@@ -201,6 +201,7 @@ void CPerfOverlay::Draw()
 		m_frame_count = 0;
 		m_show_fps = 0.f;
 		m_show_low_fps = 0.f;
+		m_sum = {};
 		return; // this frame spans the switch
 	}
 
@@ -209,6 +210,20 @@ void CPerfOverlay::Draw()
 	m_frame_count = _min(m_frame_count + 1, kFrameHistory);
 	m_graph[m_graph_pos] = frame_ms;
 	m_graph_pos = (m_graph_pos + 1) % kGraphSamples;
+
+	// Per-frame times, averaged over each refresh interval (the engine's own smoothed values fall too slowly).
+	// CPU: engine update + render submission; RenderTOTAL includes Present, which waits for vsync/the GPU
+	const CStats* st = Device.Statistic;
+	m_sum.frame += frame_ms;
+	++m_sum.n;
+	if (st)
+	{
+		m_sum.cpu += _max(0.f, st->EngineTOTAL.last + st->RenderTOTAL.last - m_present_ms);
+		const CStatTimer* timers[kTimers] = { &st->EngineTOTAL, &st->Sheduler, &st->UpdateClient, &st->Physics,
+			&st->AI_Think, &st->Animation, &st->RenderTOTAL, &st->RenderCALC, &st->RenderCALC_HOM };
+		for (u32 i = 0; i < kTimers; ++i)
+			m_sum.timers[i] += timers[i]->last;
+	}
 
 	// Refresh the numbers 4 times per second
 	m_refresh_ms += frame_ms;
@@ -246,6 +261,18 @@ void CPerfOverlay::Draw()
 			std::nth_element(recent, recent + idx, recent + low_n);
 			m_show_low_fps = recent[idx] > 0.f ? 1000.f / recent[idx] : 0.f;
 		}
+		if (m_sum.n)
+		{
+			const float n = float(m_sum.n);
+			m_show_interval_ms = m_sum.frame / n;
+			m_show_cpu_ms = m_sum.cpu / n;
+			for (u32 i = 0; i < kTimers; ++i)
+				m_show_timers[i] = m_sum.timers[i] / n;
+		}
+		if (m_sum.gpu_n)
+			m_show_gpu_ms = m_sum.gpu / float(m_sum.gpu_n);
+		m_sum = {};
+
 		UpdateVram();
 		UpdateRam();
 	}
@@ -275,21 +302,21 @@ void CPerfOverlay::Draw()
 		else
 			ImGui::Text("%4.0f FPS   %5.2f ms   1%% low    -", m_show_fps, m_show_frame_ms);
 
-		const CStats* st = Device.Statistic;
-		// Engine update + render submission; RenderTOTAL includes Present, which waits for vsync/the GPU
-		const float cpu_ms = st ? _max(0.f, st->EngineTOTAL.result + st->RenderTOTAL.result - m_present_ms) : 0.f;
-		if (m_gpu_ms > 0.f)
+		if (m_show_gpu_ms > 0.f)
 		{
-			const bool gpu_bound = m_gpu_ms >= m_show_frame_ms * 0.9f;
-			ImGui::Text("GPU %5.2f ms   CPU %5.2f ms", m_gpu_ms, cpu_ms);
+			ImGui::Text("GPU %5.2f ms   CPU %5.2f ms", m_show_gpu_ms, m_show_cpu_ms);
 			ImGui::SameLine();
-			if (gpu_bound)
+			// Whichever side takes (nearly) the whole frame limits it; neither means an FPS cap, vsync or waits
+			const float limit = m_show_interval_ms * 0.85f;
+			if (m_show_gpu_ms >= limit && m_show_gpu_ms >= m_show_cpu_ms)
 				ImGui::TextColored(ImVec4(1.f, 0.6f, 0.3f, 1.f), "  GPU-bound");
+			else if (m_show_cpu_ms >= limit)
+				ImGui::TextColored(ImVec4(0.5f, 0.8f, 1.f, 1.f), "  CPU-bound");
 			else
-				ImGui::TextColored(ImVec4(0.5f, 0.8f, 1.f, 1.f), "  CPU-bound / capped");
+				ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.f), "  capped / waiting");
 		}
 		else
-			ImGui::Text("GPU   n/a     CPU %5.2f ms", cpu_ms);
+			ImGui::Text("GPU   n/a     CPU %5.2f ms", m_show_cpu_ms);
 
 		// Budget is what the OS/driver lets the game use before evicting, below the card's total
 		if (m_vram_budget_gb > 0.f && m_vram_total_gb > 0.f)
@@ -313,12 +340,10 @@ void CPerfOverlay::Draw()
 		if (ps_perf_overlay >= 2)
 		{
 			ImGui::Separator();
-			if (st)
-			{
-				ImGui::Text("Update %5.2f   Scheduler %5.2f   Objects %5.2f", st->EngineTOTAL.result, st->Sheduler.result, st->UpdateClient.result);
-				ImGui::Text("Physics %5.2f   AI %5.2f   Animation %5.2f", st->Physics.result, st->AI_Think.result, st->Animation.result);
-				ImGui::Text("Render %5.2f   Calc %5.2f   HOM %5.2f", st->RenderTOTAL.result, st->RenderCALC.result, st->RenderCALC_HOM.result);
-			}
+			const float* t = m_show_timers;
+			ImGui::Text("Update %5.2f   Scheduler %5.2f   Objects %5.2f", t[0], t[1], t[2]);
+			ImGui::Text("Physics %5.2f   AI %5.2f   Animation %5.2f", t[3], t[4], t[5]);
+			ImGui::Text("Render %5.2f   Calc %5.2f   HOM %5.2f", t[6], t[7], t[8]);
 			ImGui::Text("Draw calls %u   Triangles %.2f M", m_draw_calls, float(m_polys) / 1000000.f);
 
 			float graph_max = 0.f;

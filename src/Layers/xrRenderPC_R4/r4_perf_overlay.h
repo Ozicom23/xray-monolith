@@ -43,10 +43,9 @@ private:
 	u32 m_query_write = 0;
 	bool m_query_active = false;
 	bool m_queries_failed = false;
-	float m_gpu_ms = 0.f;
 
 	CTimer m_present_timer;
-	float m_present_ms = 0.f;
+	float m_present_ms = 0.f; // last frame
 
 	CTimer m_frame_timer;
 	bool m_frame_timer_started = false;
@@ -62,6 +61,22 @@ private:
 	float m_show_frame_ms = 0.f;
 	float m_show_low_fps = 0.f;
 	bool m_in_menu = false;
+
+	// Engine timers shown in detailed mode: update, scheduler, objects, physics, AI, animation, render, calc, HOM
+	static const u32 kTimers = 9;
+
+	// Sums since the last refresh, shown as averages over the refresh interval
+	struct Sums
+	{
+		float frame, cpu, gpu;
+		float timers[kTimers];
+		u32 n, gpu_n;
+	};
+	Sums m_sum = {};
+	float m_show_interval_ms = 0.f; // average frame time over the same interval as CPU/GPU
+	float m_show_cpu_ms = 0.f;
+	float m_show_gpu_ms = 0.f;
+	float m_show_timers[kTimers] = {};
 
 	struct IDXGIAdapter3* m_adapter3 = nullptr;
 	bool m_vram_failed = false;

@@ -198,8 +198,9 @@ class XRCORE_API CStatTimer
 public:
 	CTimer T;
 	u64 accum;
-	float result;
+	float result; // smoothed: follows rises at once, falls 1% per frame
 	u32 count;
+	float last; // last frame's time in ms, unsmoothed
 public:
 	CStatTimer();
 	void FrameStart();
