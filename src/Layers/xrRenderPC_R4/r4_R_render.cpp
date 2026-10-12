@@ -16,6 +16,16 @@ void CRender::render_menu()
 	RCache.set_Stencil(FALSE);
 	RCache.set_ColorWriteEnable();
 
+	// DLSS: rt_Generic_0/1 are at render resolution, draw the menu UI straight to the
+	// output (without the distortion effect) instead of squeezing it into the smaller targets
+	if (Target->dlss_enabled())
+	{
+		Target->u_setrt(Device.dwWidth, Device.dwHeight, HW.pBaseRT, NULL, NULL, HW.pBaseZB);
+		rmNormal();
+		g_pGamePersistent->OnRenderPPUI_main(); // PP-UI
+		return;
+	}
+
 	// Main Render
 	{
 		Target->u_setrt(Target->rt_Generic_0, 0, 0, HW.pBaseZB); // LDR RT
@@ -91,6 +101,15 @@ void CRender::Render()
 		m_bFirstFrameAfterReset = false;
 		return;
 	}
+
+	// DLSS: render the scene at the internal resolution until Target->phase_dlss() upscales it.
+	// The guard restores the output resolution if the frame leaves early.
+	Target->dlss_begin_scene();
+	struct dlss_scene_guard
+	{
+		CRenderTarget* T;
+		~dlss_scene_guard() { T->dlss_end_scene(); }
+	} dlss_guard = { Target };
 
 	//.	VERIFY					(g_pGameLevel && g_pGameLevel->pHUD);
 

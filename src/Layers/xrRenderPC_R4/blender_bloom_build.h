@@ -39,6 +39,20 @@ public:
 	virtual ~CBlender_postprocess_msaa();
 };
 
+// Final post-process pass reading the DLSS output (output resolution) instead of the scene target
+class CBlender_postprocess_dlss : public IBlender
+{
+public:
+	virtual LPCSTR getComment() { return "INTERNAL: postprocess from DLSS output"; }
+	virtual BOOL canBeDetailed() { return FALSE; }
+	virtual BOOL canBeLMAPped() { return FALSE; }
+
+	virtual void Compile(CBlender_Compile& C);
+
+	CBlender_postprocess_dlss();
+	virtual ~CBlender_postprocess_dlss();
+};
+
 class CBlender_ssfx_bloom_build : public IBlender
 {
 public:

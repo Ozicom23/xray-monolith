@@ -17,6 +17,7 @@
 #include "../../xrCore/profiler.h"
 
 #include "D3DX10Core.h"
+#include "r4_dlss.h"
 
 CRender RImplementation;
 
@@ -399,9 +400,20 @@ void CRender::create()
 	// HDR10
 	o.dx11_hdr10 = !!ps_r4_hdr10_on;
 
+	// DLSS: needs the SSS motion vectors and a single-sampled scene
+	o.dlss = FALSE;
+	if (ps_r4_dlss)
+	{
+		string_path mv_fn;
+		if (!FS.exist(mv_fn, "$game_shaders$", "r3\\screenspace_mvectors", ".h"))
+			Msg("! DLSS: disabled, Screen Space Shaders motion vectors (r3\\screenspace_mvectors.h) are not installed");
+		else if (g_DLSS.Init())
+			o.dlss = TRUE;
+	}
+
 	//	MSAA option dependencies
-	o.dx10_msaa = ps_r3_msaa && !o.dx11_hdr10;
-	o.dx10_msaa_samples = o.dx11_hdr10 ? 1 : (1 << ps_r3_msaa);
+	o.dx10_msaa = ps_r3_msaa && !o.dx11_hdr10 && !o.dlss;
+	o.dx10_msaa_samples = (o.dx11_hdr10 || o.dlss) ? 1 : (1 << ps_r3_msaa);
 
 	o.dx10_msaa_opt = ps_r2_ls_flags.test(R3FLAG_MSAA_OPT);
 	o.dx10_msaa_opt = o.dx10_msaa_opt && o.dx10_msaa && (HW.FeatureLevel >= D3D_FEATURE_LEVEL_10_1)
@@ -553,6 +565,7 @@ void CRender::destroy()
 	HWOCC.occq_destroy();
 	xr_delete(Models);
 	xr_delete(Target);
+	g_DLSS.Shutdown();
 	PSLibrary.OnDestroy();
 	Device.seqFrame.Remove(this);
 	Device.ModelDefferClear = nullptr;
@@ -880,8 +893,9 @@ void CRender::rmNormal()
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
 CRender::CRender()
-	: m_bFirstFrameAfterReset(false)
+	: m_bFirstFrameAfterReset(false), dlss_jitter_on(false)
 {
+	dlss_jitter_ndc.set(0.f, 0.f);
 	init_cacades();
 }
 

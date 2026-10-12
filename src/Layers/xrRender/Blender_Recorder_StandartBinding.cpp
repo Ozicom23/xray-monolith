@@ -1162,6 +1162,13 @@ static class ssfx_jitter : public R_constant_setup
 		float JitterY = 0;
 
 #if defined(USE_DX11)
+		// DLSS: Halton jitter in clip space, replaces the SSS TAA pattern
+		if (RImplementation.dlss_jitter_on)
+		{
+			RCache.set_c(C, RImplementation.dlss_jitter_ndc.x, RImplementation.dlss_jitter_ndc.y, ps_ssfx_taa.x, ps_ssfx_taa.w);
+			return;
+		}
+
 		if (ps_ssfx_taa.x > 0 && RImplementation.o.ssfx_taa)
 		{
 			static Fvector2 TAA_Offset[4] = 

@@ -42,6 +42,7 @@
 #pragma comment( lib, "d3dx9.lib" )
 
 ENGINE_API CRenderDevice Device;
+ENGINE_API bool g_svp_keep_main_prev = false;
 ENGINE_API CLoadScreenRenderer load_screen_renderer;
 ENGINE_API CRenderDevice* DevicePtr = nullptr;
 
@@ -462,10 +463,13 @@ void CRenderDevice::on_idle()
 	//RCache.set_xform_project ( mProject );
 	D3DXMatrixInverse((D3DXMATRIX*)&mInvFullTransform, 0, (D3DXMATRIX*)&mFullTransform);
 
-	vCameraPosition_saved = vCameraPosition;
-	mFullTransform_saved = mFullTransform;
-	mView_saved = mView;
-	mProject_saved = mProject;
+	if (!(g_svp_keep_main_prev && m_SecondViewport.IsSVPFrame()))
+	{
+		vCameraPosition_saved = vCameraPosition;
+		mFullTransform_saved = mFullTransform;
+		mView_saved = mView;
+		mProject_saved = mProject;
+	}
 
 	STOP_PROFILE;
 

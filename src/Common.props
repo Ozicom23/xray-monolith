@@ -37,6 +37,19 @@
       <GenerateDebugInformation>false</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
+  <!-- NVIDIA DLSS (NGX) SDK: optional, fetched by CI into "src/3rd party/NVIDIA-DLSS" -->
+  <PropertyGroup>
+    <xrNgxSdkDir>$(xr3rdPartyDir)NVIDIA-DLSS\</xrNgxSdkDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="Exists('$(xrNgxSdkDir)lib\Windows_x86_64\x64\nvsdk_ngx_d.lib')">
+    <ClCompile>
+      <PreprocessorDefinitions>XR_DLSS_SDK;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(xrNgxSdkDir)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>$(xrNgxSdkDir)lib\Windows_x86_64\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
+  </ItemDefinitionGroup>
   <ItemGroup>
     <BuildMacro Include="xrBinRootDir">
       <Value>$(xrBinRootDir)</Value>

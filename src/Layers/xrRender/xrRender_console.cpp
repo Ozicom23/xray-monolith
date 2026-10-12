@@ -313,6 +313,20 @@ int   ps_r4_hdr10_pda             = 0;	    // r4-only (NOTE: this is a hack to n
 int   ps_r4_hdr10_on              = 0;	    // r4-only, default = off
 int   ps_r4_hdr10_colorspace      = 2;      // r4-only, default = Rec.2020
 
+// DLSS Super Resolution (r4-only)
+int   ps_r4_dlss                  = 0;      // r4-only, needs vid_restart
+u32   ps_r4_dlss_quality          = 3;      // r4-only, needs vid_restart
+xr_token dlss_quality_token[] = {
+	{ "ultra_performance", 0 },
+	{ "performance", 1 },
+	{ "balanced", 2 },
+	{ "quality", 3 },
+	{ "dlaa", 4 },
+	{ 0, 0 }
+};
+Fvector4 ps_r4_dlss_signs         = { 1, 1, 1, 1 }; // r4-only, debug: motion vector x/y and jitter x/y sign multipliers
+int   ps_r4_dlss_log              = 0;      // r4-only, forward NGX log into the engine log, needs vid_restart
+
 int   ps_r4_hdr10_tonemapper   		   = 0;    // r4-only, default = ACES (Narkowicz)
 int   ps_r4_hdr10_tonemap_mode 		   = 1;	   // r4-only, default = Color
 float ps_r4_hdr10_exposure     		   = 0.8f; // r4-only, default = 1.0x
@@ -1262,6 +1276,11 @@ void xrRender_initconsole()
     CMD4(CCC_Float,   "r4_hdr10_ui_nits", 		  &ps_r4_hdr10_ui_nits, 	     10.0f, 10000.0f);
     CMD4(CCC_Float,   "r4_hdr10_pda_intensity",   &ps_r4_hdr10_pda_intensity,      0.1, 2);
 	CMD4(CCC_Integer, "r4_hdr10_on", 			  &ps_r4_hdr10_on, 				     0, 1);
+
+	CMD4(CCC_Integer, "r4_dlss",                  &ps_r4_dlss,                       0, 1);
+	CMD3(CCC_Token,   "r4_dlss_quality",          &ps_r4_dlss_quality,               dlss_quality_token);
+	CMD4(CCC_Vector4, "r4_dlss_signs",            &ps_r4_dlss_signs, Fvector4().set(-1, -1, -1, -1), Fvector4().set(1, 1, 1, 1));
+	CMD4(CCC_Integer, "r4_dlss_log",              &ps_r4_dlss_log,                   0, 2);
     CMD4(CCC_Integer, "r4_hdr10_colorspace",	  &ps_r4_hdr10_colorspace, 		     0, 2);
 
     CMD4(CCC_Integer, "r4_hdr10_tonemapper", 	  		&ps_r4_hdr10_tonemapper,      	      0, 8);

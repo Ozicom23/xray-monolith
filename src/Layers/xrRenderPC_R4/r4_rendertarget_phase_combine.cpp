@@ -575,15 +575,15 @@ void CRenderTarget::phase_combine()
 		phase_fakescope(); //crookr
 	}
 
-    //SMAA
-	if (ps_smaa_quality)
+    //SMAA, DLSS does its own anti-aliasing
+	if (ps_smaa_quality && !m_dlss_in_scene)
 	{
         //PIX_EVENT(SMAA);
         phase_smaa();
         RCache.set_Stencil(FALSE);
     }    
 	
-	if (RImplementation.o.ssfx_taa && ps_ssfx_taa.x > 0)
+	if (RImplementation.o.ssfx_taa && ps_ssfx_taa.x > 0 && !m_dlss_in_scene)
 	{
 		phase_ssfx_taa();
 	}
@@ -738,6 +738,9 @@ void CRenderTarget::phase_combine()
 	/* if (!RImplementation.o.fp16_blend)*/
 	if (ps_r2_anomaly_flags.test(R2_AN_FLAG_FLARES) && ps_r2_heatvision == 0) //--DSR-- HeatVision
 		g_pGamePersistent->Environment().RenderFlares(); // lens-flares
+
+	// DLSS: upscale rt_Color to output resolution, everything after this runs at output resolution
+	phase_dlss();
 
 	//	PP-if required
 	if (PP_Complex)

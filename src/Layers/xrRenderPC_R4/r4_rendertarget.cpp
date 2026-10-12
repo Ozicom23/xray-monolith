@@ -31,6 +31,7 @@
 
 #include "../xrRender/dxRenderDeviceRender.h"
 #include "../xrRender/xrRender_console.h"
+#include "r4_dlss.h"
 
 #include <D3DX10Tex.h>
 
@@ -363,6 +364,40 @@ CRenderTarget::CRenderTarget()
 	if( RImplementation.o.dx10_msaa_opt )
 		Msg		("dx10_MSAA_opt = on" );
 #endif // DEBUG
+
+	// DLSS: every scene target below is built at the internal render resolution,
+	// Device.dwWidth/dwHeight are restored to the output resolution at the end of the constructor
+	b_postprocess_dlss = nullptr;
+	m_dlss_enabled = false;
+	m_dlss_in_scene = false;
+	m_dlss_upscaled = false;
+	m_dlss_reset = true;
+	m_dlss_output_w = m_dlss_render_w = Device.dwWidth;
+	m_dlss_output_h = m_dlss_render_h = Device.dwHeight;
+	m_dlss_jitter_phases = 8;
+	m_dlss_jitter_index = 0;
+	m_dlss_jitter.set(0.f, 0.f);
+	m_dlss_last_frame = 0;
+	m_dlss_last_cam.set(0.f, 0.f, 0.f);
+	m_dlss_saved_zb = nullptr;
+
+	if (RImplementation.o.dlss)
+	{
+		g_DLSS.GetRenderSize(m_dlss_output_w, m_dlss_output_h, ps_r4_dlss_quality, m_dlss_render_w, m_dlss_render_h);
+		if (g_DLSS.CreateFeature(m_dlss_render_w, m_dlss_render_h, m_dlss_output_w, m_dlss_output_h, ps_r4_dlss_quality))
+		{
+			m_dlss_enabled = true;
+			m_dlss_jitter_phases = CDLSS::GetJitterPhaseCount(m_dlss_render_w, m_dlss_output_w);
+			Device.dwWidth = m_dlss_render_w;
+			Device.dwHeight = m_dlss_render_h;
+		}
+		else
+		{
+			m_dlss_render_w = m_dlss_output_w;
+			m_dlss_render_h = m_dlss_output_h;
+		}
+	}
+
 	param_blur = 0.f;
 	param_gray = 0.f;
 	param_noise = 0.f;
@@ -552,12 +587,14 @@ CRenderTarget::CRenderTarget()
 
 		rt_dof.create(r2_RT_dof, w, h, RImplementation.o.dx11_hdr10 ? D3DFMT_A16B16G16R16F : D3DFMT_A8R8G8B8);
 
+		// Copies of the backbuffer, always at output resolution (differs from w,h with DLSS)
+		const u32 out_w = m_dlss_output_w, out_h = m_dlss_output_h;
 		if (RImplementation.o.dx11_hdr10) {
-			rt_secondVP.create(r2_RT_secondVP, w, h, D3DFMT_A2R10G10B10, 1); //--#SM+#-- +SecondVP+ // NOTE: this is a hack to use DXGI R10G10B10A2_UNORM
-			rt_ui_pda.create(r2_RT_ui, w, h, D3DFMT_A2R10G10B10); // NOTE: this is a hack to use DXGI R10G10B10A2_UNORM
+			rt_secondVP.create(r2_RT_secondVP, out_w, out_h, D3DFMT_A2R10G10B10, 1); //--#SM+#-- +SecondVP+ // NOTE: this is a hack to use DXGI R10G10B10A2_UNORM
+			rt_ui_pda.create(r2_RT_ui, out_w, out_h, D3DFMT_A2R10G10B10); // NOTE: this is a hack to use DXGI R10G10B10A2_UNORM
 		} else {
-			rt_secondVP.create(r2_RT_secondVP, w, h, D3DFMT_A8R8G8B8, 1); //--#SM+#-- +SecondVP+
-			rt_ui_pda.create(r2_RT_ui, w, h, D3DFMT_A8R8G8B8);
+			rt_secondVP.create(r2_RT_secondVP, out_w, out_h, D3DFMT_A8R8G8B8, 1); //--#SM+#-- +SecondVP+
+			rt_ui_pda.create(r2_RT_ui, out_w, out_h, D3DFMT_A8R8G8B8);
 		}
 
 		// TODO: R11G11B10F? needs another horrible hack + cast + update to converter function
@@ -1010,8 +1047,8 @@ CRenderTarget::CRenderTarget()
 		// Testure for async sreenshots
 		{
 			D3D_TEXTURE2D_DESC desc;
-			desc.Width = Device.dwWidth;
-			desc.Height = Device.dwHeight;
+			desc.Width = m_dlss_output_w; // copy of the backbuffer
+			desc.Height = m_dlss_output_h;
 			desc.MipLevels = 1;
 			desc.ArraySize = 1;
 			desc.SampleDesc.Count = 1;
@@ -1295,6 +1332,19 @@ CRenderTarget::CRenderTarget()
 	s_menu.create("distort");
 	g_menu.create(FVF::F_TL, RCache.Vertex.Buffer(), RCache.QuadIB);
 
+	// DLSS: depth readable by NGX, upscaled color and the final pass reading it
+	if (m_dlss_enabled)
+	{
+		rt_dlss_depth.create(r4_RT_dlss_depth, m_dlss_render_w, m_dlss_render_h, D3DFMT_D24S8);
+		rt_dlss_output.create(r4_RT_dlss_output, m_dlss_output_w, m_dlss_output_h, D3DFMT_A16B16G16R16F, 1, true);
+		b_postprocess_dlss = xr_new<CBlender_postprocess_dlss>();
+		s_postprocess_dlss.create(b_postprocess_dlss, "r4\\postprocess_dlss");
+
+		Device.dwWidth = m_dlss_output_w;
+		Device.dwHeight = m_dlss_output_h;
+	}
+	g_svp_keep_main_prev = m_dlss_enabled;
+
 	//
 	dwWidth = Device.dwWidth;
 	dwHeight = Device.dwHeight;
@@ -1302,6 +1352,11 @@ CRenderTarget::CRenderTarget()
 
 CRenderTarget::~CRenderTarget()
 {
+	dlss_end_scene();
+	g_DLSS.ReleaseFeature();
+	g_svp_keep_main_prev = false;
+	xr_delete(b_postprocess_dlss);
+
 	_RELEASE(t_ss_async);
 
 	// Textures

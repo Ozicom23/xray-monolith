@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "r4_rendertarget.h"
+#include "r4_dlss.h"
 
 void CRenderTarget::u_calc_tc_noise(Fvector2& p0, Fvector2& p1)
 {
@@ -119,7 +120,11 @@ void CRenderTarget::phase_pp()
 	//	Element 4 for color map post-process
 	bool bCMap = u_need_CM();
 	//RCache.set_Element	(s_postprocess->E[bCMap ? 4 : 0]);
-	if (!RImplementation.o.dx10_msaa)
+	if (m_dlss_upscaled)
+	{
+		RCache.set_Element(s_postprocess_dlss->E[bCMap ? 4 : 0]);
+	}
+	else if (!RImplementation.o.dx10_msaa)
 	{
 		//		RCache.set_Shader	(s_postprocess	);
 		RCache.set_Element(s_postprocess->E[bCMap ? 4 : 0]);
@@ -169,4 +174,102 @@ void CRenderTarget::phase_pp()
 	RCache.set_c(s_colormap, param_color_map_influence, param_color_map_interpolate, 0, 0);
 	RCache.set_Geometry(g_postprocess);
 	RCache.Render(D3DPT_TRIANGLELIST, Offset, 0, 4, 0, 2);
+}
+
+void CRenderTarget::dlss_begin_scene()
+{
+	m_dlss_upscaled = false;
+	if (!m_dlss_enabled || m_dlss_in_scene)
+		return;
+	m_dlss_in_scene = true;
+
+	Device.dwWidth = m_dlss_render_w;
+	Device.dwHeight = m_dlss_render_h;
+	m_dlss_saved_zb = HW.pBaseZB;
+	HW.pBaseZB = rt_dlss_depth->pZRT;
+
+	// Second viewport (3D scope) frames are not fed to DLSS, render them without jitter
+	if (Device.m_SecondViewport.IsSVPFrame())
+	{
+		m_dlss_jitter.set(0.f, 0.f);
+		RImplementation.dlss_jitter_on = false;
+		RImplementation.dlss_jitter_ndc.set(0.f, 0.f);
+	}
+	else
+	{
+		float jx, jy;
+		CDLSS::GetJitter(m_dlss_jitter_index, m_dlss_jitter_phases, jx, jy);
+		m_dlss_jitter.set(jx, jy);
+		// Pixel offset to clip space, pixel Y goes down
+		RImplementation.dlss_jitter_on = true;
+		RImplementation.dlss_jitter_ndc.set(2.f * jx / float(m_dlss_render_w), -2.f * jy / float(m_dlss_render_h));
+	}
+
+	// Viewport follows the last bound target, start the frame at render resolution
+	u_setrt(rt_Generic_0, NULL, NULL, HW.pBaseZB);
+	RImplementation.rmNormal();
+}
+
+void CRenderTarget::dlss_end_scene()
+{
+	RImplementation.dlss_jitter_on = false;
+	if (!m_dlss_in_scene)
+		return;
+	m_dlss_in_scene = false;
+
+	Device.dwWidth = m_dlss_output_w;
+	Device.dwHeight = m_dlss_output_h;
+	HW.pBaseZB = m_dlss_saved_zb;
+	m_dlss_saved_zb = nullptr;
+
+	u_setrt(Device.dwWidth, Device.dwHeight, HW.pBaseRT, NULL, NULL, HW.pBaseZB);
+	RImplementation.rmNormal();
+}
+
+void CRenderTarget::phase_dlss()
+{
+	if (!m_dlss_in_scene)
+		return;
+
+	if (!Device.m_SecondViewport.IsSVPFrame())
+	{
+		PIX_EVENT(phase_dlss);
+
+		// History is useless after a pause (menus, loading) or a camera cut
+		if (Device.dwFrame - m_dlss_last_frame > 4 || Device.vCameraPosition.distance_to(m_dlss_last_cam) > 10.f)
+			m_dlss_reset = true;
+
+		CDLSS::EvalParams p = {};
+		p.color = rt_Color->pSurface;
+		p.output = rt_dlss_output->pSurface;
+		p.depth = rt_dlss_depth->pSurface;
+		p.motion = rt_ssfx_motion_vectors->pSurface;
+		p.jitter_x = m_dlss_jitter.x * ps_r4_dlss_signs.z;
+		p.jitter_y = m_dlss_jitter.y * ps_r4_dlss_signs.w;
+		// SSS motion vectors are (current - previous) in UV units, DLSS wants (previous - current) in pixels
+		p.mv_scale_x = -float(m_dlss_render_w) * ps_r4_dlss_signs.x;
+		p.mv_scale_y = -float(m_dlss_render_h) * ps_r4_dlss_signs.y;
+		p.render_w = m_dlss_render_w;
+		p.render_h = m_dlss_render_h;
+		p.reset = m_dlss_reset;
+		p.frame_time_ms = Device.fTimeDelta * 1000.f;
+
+		// NGX binds its own state, start and leave with a clean context
+		HW.pContext->ClearState();
+		RCache.Invalidate();
+		m_dlss_upscaled = g_DLSS.Evaluate(p);
+		HW.pContext->ClearState();
+		RCache.Invalidate();
+
+		if (m_dlss_upscaled)
+		{
+			m_dlss_reset = false;
+			m_dlss_jitter_index++;
+			m_dlss_last_frame = Device.dwFrame;
+			m_dlss_last_cam.set(Device.vCameraPosition);
+		}
+	}
+
+	// Without an upscaled image phase_pp stretches rt_Color bilinearly
+	dlss_end_scene();
 }
