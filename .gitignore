@@ -37,3 +37,6 @@ src/3rd party/luajit-2/src/host/*.exe
 
 # NVIDIA DLSS SDK, fetched by CI
 src/3rd party/NVIDIA-DLSS/
+
+# FSR shaders compiled by CI
+src/3rd party/FidelityFX-FSR3/generated/

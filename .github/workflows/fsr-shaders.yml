@@ -1,0 +1,30 @@
+# Quick check that the FSR 3.1 upscaler shaders compile for D3D11 (fxc, cs_5_0).
+# Runs in about a minute, without building the engine.
+
+name: FSR shaders (cs_5_0)
+
+on:
+  push:
+    branches: [ "dlss-fsr*" ]
+    paths:
+      - "src/3rd party/FidelityFX-FSR3/**"
+      - ".github/workflows/fsr-shaders.yml"
+  workflow_dispatch:
+
+jobs:
+  compile:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Compile shaders
+      run: powershell -ExecutionPolicy Bypass -File "src/3rd party/FidelityFX-FSR3/compile_shaders.ps1" -OutDir "$env:RUNNER_TEMP/fsr"
+
+    - name: Upload headers
+      if: always()
+      uses: actions/upload-artifact@v4.6.0
+      with:
+        name: fsr_shaders
+        path: ${{ runner.temp }}/fsr
+        if-no-files-found: ignore
+        retention-days: 7
