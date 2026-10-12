@@ -231,6 +231,8 @@ extern ECORE_API float ps_r4_hdr10_pda_intensity; 	// r4-only
 extern ECORE_API u32      ps_r4_upscaler;         // r4-only, EUpscalerType
 extern ECORE_API u32      ps_r4_upscaler_quality; // r4-only, EUpscalerQuality
 extern ECORE_API float    ps_r4_fsr_sharpness;    // r4-only
+extern ECORE_API Fvector4 ps_r4_fsr_tuning;       // r4-only
+extern ECORE_API int      ps_r4_fsr_debug_view;   // r4-only
 extern ECORE_API Fvector4 ps_r4_upscaler_signs;   // r4-only
 extern ECORE_API int      ps_r4_dlss_log;         // r4-only
 

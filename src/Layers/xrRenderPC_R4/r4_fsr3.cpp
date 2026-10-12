@@ -888,9 +888,17 @@ bool CFSR3::Evaluate(const UpscalerEvalParams& p)
 	d.cameraFar = p.camera_far;
 	d.cameraFovAngleVertical = p.camera_fov_y;
 	d.viewSpaceToMetersFactor = 1.f; // X-Ray units are meters
-	d.flags = 0;
+	d.flags = ps_r4_fsr_debug_view ? FFX_FSR3UPSCALER_DISPATCH_DRAW_DEBUG_VIEW : 0;
 
-	const FfxErrorCode res = ffxFsr3UpscalerContextDispatch((FfxFsr3UpscalerContext*)m_context, &d);
+	// Stability tuning (r4_fsr_tuning), applied every frame so console changes take effect immediately
+	FfxFsr3UpscalerContext* ctx = (FfxFsr3UpscalerContext*)m_context;
+	float tuning[4] = { ps_r4_fsr_tuning.x, ps_r4_fsr_tuning.y, ps_r4_fsr_tuning.z, ps_r4_fsr_tuning.w };
+	ffxFsr3UpscalerSetConstant(ctx, FFX_FSR3UPSCALER_CONFIGURE_UPSCALE_KEY_FVELOCITYFACTOR, &tuning[0]);
+	ffxFsr3UpscalerSetConstant(ctx, FFX_FSR3UPSCALER_CONFIGURE_UPSCALE_KEY_FSHADINGCHANGESCALE, &tuning[1]);
+	ffxFsr3UpscalerSetConstant(ctx, FFX_FSR3UPSCALER_CONFIGURE_UPSCALE_KEY_FACCUMULATIONADDEDPERFRAME, &tuning[2]);
+	ffxFsr3UpscalerSetConstant(ctx, FFX_FSR3UPSCALER_CONFIGURE_UPSCALE_KEY_FMINDISOCCLUSIONACCUMULATION, &tuning[3]);
+
+	const FfxErrorCode res = ffxFsr3UpscalerContextDispatch(ctx, &d);
 	if (res != FFX_OK)
 	{
 		if (m_eval_failures++ < 8)
