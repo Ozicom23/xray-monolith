@@ -17,7 +17,7 @@
 #include "../../xrCore/profiler.h"
 
 #include "D3DX10Core.h"
-#include "r4_dlss.h"
+#include "r4_upscaler.h"
 
 CRender RImplementation;
 
@@ -400,12 +400,12 @@ void CRender::create()
 	// HDR10
 	o.dx11_hdr10 = !!ps_r4_hdr10_on;
 
-	// DLSS: needs the SSS motion vectors and a single-sampled scene
-	o.dlss = dlss_check() ? TRUE : FALSE;
+	// Upscaler (DLSS / FSR): needs the SSS motion vectors and a single-sampled scene
+	o.upscaler = upscaler_check();
 
 	//	MSAA option dependencies
-	o.dx10_msaa = ps_r3_msaa && !o.dx11_hdr10 && !o.dlss;
-	o.dx10_msaa_samples = (o.dx11_hdr10 || o.dlss) ? 1 : (1 << ps_r3_msaa);
+	o.dx10_msaa = ps_r3_msaa && !o.dx11_hdr10 && !o.upscaler;
+	o.dx10_msaa_samples = (o.dx11_hdr10 || o.upscaler) ? 1 : (1 << ps_r3_msaa);
 
 	o.dx10_msaa_opt = ps_r2_ls_flags.test(R3FLAG_MSAA_OPT);
 	o.dx10_msaa_opt = o.dx10_msaa_opt && o.dx10_msaa && (HW.FeatureLevel >= D3D_FEATURE_LEVEL_10_1)
@@ -543,7 +543,7 @@ void CRender::create()
 	GMBase.initialize();
 	FluidManager.Initialize(70, 70, 70);
 	//	FluidManager.Initialize( 100, 100, 100 );
-	FluidManager.SetScreenSize(Target->dlss_render_width(), Target->dlss_render_height()); // scene resolution
+	FluidManager.SetScreenSize(Target->upscale_render_width(), Target->upscale_render_height()); // scene resolution
 
 	Device.ModelDefferClear = xr_make_delegate(Models, &CModelPool::DeleteQueuedDeffer);
 }
@@ -557,7 +557,8 @@ void CRender::destroy()
 	HWOCC.occq_destroy();
 	xr_delete(Models);
 	xr_delete(Target);
-	g_DLSS.Shutdown();
+	for (u32 type = upscaler_dlss; type <= upscaler_fsr; ++type)
+		GetUpscaler(type)->Shutdown();
 	PSLibrary.OnDestroy();
 	Device.seqFrame.Remove(this);
 	Device.ModelDefferClear = nullptr;
@@ -578,33 +579,35 @@ void CRender::reset_begin()
 	HWOCC.occq_destroy();
 }
 
-// DLSS needs the Screen Space Shaders motion vectors and an NVIDIA GPU with DLSS support
-bool CRender::dlss_check()
+// Upscalers need the Screen Space Shaders motion vectors; DLSS also needs an NVIDIA RTX GPU
+u32 CRender::upscaler_check()
 {
-	if (!ps_r4_dlss)
-		return false;
+	CUpscaler* upscaler = GetUpscaler(ps_r4_upscaler);
+	if (!upscaler)
+		return upscaler_off;
 
 	string_path mv_fn;
 	if (!FS.exist(mv_fn, "$game_shaders$", "r3\\screenspace_mvectors", ".h"))
 	{
-		Msg("! DLSS: disabled, Screen Space Shaders motion vectors (r3\\screenspace_mvectors.h) are not installed");
-		return false;
+		Msg("! %s: disabled, Screen Space Shaders motion vectors (r3\\screenspace_mvectors.h) are not installed", upscaler->Name());
+		return upscaler_off;
 	}
-	return g_DLSS.Init();
+	return upscaler->Init() ? ps_r4_upscaler : upscaler_off;
 }
 
 void CRender::reset_end()
 {
 	HWOCC.occq_create(occq_size);
 
-	// DLSS can be switched with vid_restart, unless MSAA was enabled when the renderer started
-	if (!!ps_r4_dlss != !!o.dlss)
+	// The upscaler can be switched with vid_restart, unless MSAA was enabled when the renderer started
+	if (ps_r4_upscaler != o.upscaler)
 	{
 		if (o.dx10_msaa)
-			Msg("! DLSS: turn off MSAA (r3_msaa) and restart the game to use DLSS");
+			Msg("! Upscaler: turn off MSAA (r3_msaa) and restart the game to use DLSS or FSR");
 		else
-			o.dlss = dlss_check() ? TRUE : FALSE;
-		Msg("* DLSS: %s", o.dlss ? "on" : "off");
+			o.upscaler = upscaler_check();
+		CUpscaler* upscaler = GetUpscaler(o.upscaler);
+		Msg("* Upscaler: %s", upscaler ? upscaler->Name() : "off");
 	}
 
 	Target = xr_new<CRenderTarget>();
@@ -618,7 +621,7 @@ void CRender::reset_end()
 	}
 	//-AVO
 
-	FluidManager.SetScreenSize(Target->dlss_render_width(), Target->dlss_render_height()); // scene resolution
+	FluidManager.SetScreenSize(Target->upscale_render_width(), Target->upscale_render_height()); // scene resolution
 
 	// Set this flag true to skip the first render frame,
 	// that some data is not ready in the first frame (for example device camera position)
@@ -910,9 +913,9 @@ void CRender::rmNormal()
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
 CRender::CRender()
-	: m_bFirstFrameAfterReset(false), dlss_jitter_on(false)
+	: m_bFirstFrameAfterReset(false), upscale_jitter_on(false)
 {
-	dlss_jitter_ndc.set(0.f, 0.f);
+	upscale_jitter_ndc.set(0.f, 0.f);
 	init_cacades();
 }
 

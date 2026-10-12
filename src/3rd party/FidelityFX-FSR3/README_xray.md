@@ -16,3 +16,4 @@ Search for `XRAY-DX11` to find them when updating the SDK.
 | File | Change |
 |---|---|
 | `include/FidelityFX/gpu/fsr3upscaler/ffx_fsr3upscaler_accumulate.h` | zero-initialize the `Accumulate()` locals; fxc rejects passing partially initialized structs as `inout` |
+| `shaders/ffx_fsr3upscaler_luma_pyramid_pass.hlsl` | renumber UAV slots so the used ones fit D3D11.0's 8 compute UAV slots (u0-u7) |

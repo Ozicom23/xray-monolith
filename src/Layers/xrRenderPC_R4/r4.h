@@ -120,8 +120,8 @@ public:
 		// HDR10
 		u32 dx11_hdr10 : 1;
 
-		// DLSS Super Resolution
-		u32 dlss : 1;
+		// Temporal upscaler in use (EUpscalerType)
+		u32 upscaler : 2;
 		
 		float forcegloss_v;
 	} o;
@@ -191,10 +191,10 @@ public:
 
 	bool m_bMakeAsyncSS;
 
-	// DLSS: sub-pixel jitter for the frame being rendered, consumed by the ssfx_jitter shader constant
-	bool dlss_jitter_on;
-	Fvector2 dlss_jitter_ndc;
-	bool dlss_check();
+	// Upscaler: sub-pixel jitter for the frame being rendered, consumed by the ssfx_jitter shader constant
+	bool upscale_jitter_on;
+	Fvector2 upscale_jitter_ndc;
+	u32 upscaler_check();
 
 	bool m_bFirstFrameAfterReset; // Determines weather the frame is the first after resetting device.
 	xr_vector<sun::cascade> m_sun_cascades;

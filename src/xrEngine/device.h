@@ -531,7 +531,7 @@ extern ENGINE_API float refresh_rate;
 #endif // ECO_RENDER
 
 extern ENGINE_API bool g_bBenchmark;
-// Set by the renderer while DLSS is active: second viewport (3D scope) frames don't overwrite
+// Set by the renderer while an upscaler (DLSS / FSR) is active: second viewport (3D scope) frames don't overwrite
 // the previous-frame camera, so motion vectors of the next main frame stay valid
 extern ENGINE_API bool g_svp_keep_main_prev;
 

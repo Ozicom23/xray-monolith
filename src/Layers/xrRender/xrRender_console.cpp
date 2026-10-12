@@ -313,18 +313,25 @@ int   ps_r4_hdr10_pda             = 0;	    // r4-only (NOTE: this is a hack to n
 int   ps_r4_hdr10_on              = 0;	    // r4-only, default = off
 int   ps_r4_hdr10_colorspace      = 2;      // r4-only, default = Rec.2020
 
-// DLSS Super Resolution (r4-only)
-int   ps_r4_dlss                  = 0;      // r4-only, needs vid_restart
-u32   ps_r4_dlss_quality          = 3;      // r4-only, needs vid_restart
-xr_token dlss_quality_token[] = {
+// Temporal upscaling: DLSS / FSR (r4-only)
+u32   ps_r4_upscaler              = 0;      // r4-only, applied with vid_restart
+xr_token upscaler_token[] = {
+	{ "off", 0 },
+	{ "dlss", 1 },
+	{ "fsr", 2 },
+	{ 0, 0 }
+};
+u32   ps_r4_upscaler_quality      = 3;      // r4-only, applied with vid_restart
+xr_token upscaler_quality_token[] = {
 	{ "ultra_performance", 0 },
 	{ "performance", 1 },
 	{ "balanced", 2 },
 	{ "quality", 3 },
-	{ "dlaa", 4 },
+	{ "native", 4 },
 	{ 0, 0 }
 };
-Fvector4 ps_r4_dlss_signs         = { 1, 1, 1, 1 }; // r4-only, debug: motion vector x/y and jitter x/y sign multipliers
+float ps_r4_fsr_sharpness         = 0.3f;   // r4-only, FSR RCAS sharpening, 0 = off
+Fvector4 ps_r4_upscaler_signs     = { 1, 1, 1, 1 }; // r4-only, debug: motion vector x/y and jitter x/y sign multipliers
 int   ps_r4_dlss_log              = 0;      // r4-only, forward NGX log into the engine log, needs vid_restart
 
 int   ps_r4_hdr10_tonemapper   		   = 0;    // r4-only, default = ACES (Narkowicz)
@@ -1277,9 +1284,10 @@ void xrRender_initconsole()
     CMD4(CCC_Float,   "r4_hdr10_pda_intensity",   &ps_r4_hdr10_pda_intensity,      0.1, 2);
 	CMD4(CCC_Integer, "r4_hdr10_on", 			  &ps_r4_hdr10_on, 				     0, 1);
 
-	CMD4(CCC_Integer, "r4_dlss",                  &ps_r4_dlss,                       0, 1);
-	CMD3(CCC_Token,   "r4_dlss_quality",          &ps_r4_dlss_quality,               dlss_quality_token);
-	CMD4(CCC_Vector4, "r4_dlss_signs",            &ps_r4_dlss_signs, Fvector4().set(-1, -1, -1, -1), Fvector4().set(1, 1, 1, 1));
+	CMD3(CCC_Token,   "r4_upscaler",              &ps_r4_upscaler,                   upscaler_token);
+	CMD3(CCC_Token,   "r4_upscaler_quality",      &ps_r4_upscaler_quality,           upscaler_quality_token);
+	CMD4(CCC_Float,   "r4_fsr_sharpness",         &ps_r4_fsr_sharpness,              0.f, 1.f);
+	CMD4(CCC_Vector4, "r4_upscaler_signs",        &ps_r4_upscaler_signs, Fvector4().set(-1, -1, -1, -1), Fvector4().set(1, 1, 1, 1));
 	CMD4(CCC_Integer, "r4_dlss_log",              &ps_r4_dlss_log,                   0, 2);
     CMD4(CCC_Integer, "r4_hdr10_colorspace",	  &ps_r4_hdr10_colorspace, 		     0, 2);
 

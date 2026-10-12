@@ -46,6 +46,9 @@ jobs:
         git -C "$dst" sparse-checkout set --no-cone /include/ /LICENSE.txt /lib/Windows_x86_64/x64/nvsdk_ngx_d.lib /lib/Windows_x86_64/rel/nvngx_dlss.dll /lib/Windows_x86_64/dev/nvngx_dlss.dll
         if (!(Test-Path "$dst/lib/Windows_x86_64/x64/nvsdk_ngx_d.lib")) { throw "DLSS SDK fetch failed" }
 
+    - name: Compile FSR shaders
+      run: powershell -ExecutionPolicy Bypass -File "src/3rd party/FidelityFX-FSR3/compile_shaders.ps1"
+
     - name: setup-msbuild
       uses: microsoft/setup-msbuild@v1.3.1
       with:

@@ -31,7 +31,7 @@
 
 #include "../xrRender/dxRenderDeviceRender.h"
 #include "../xrRender/xrRender_console.h"
-#include "r4_dlss.h"
+#include "r4_upscaler.h"
 
 #include <D3DX10Tex.h>
 
@@ -365,36 +365,38 @@ CRenderTarget::CRenderTarget()
 		Msg		("dx10_MSAA_opt = on" );
 #endif // DEBUG
 
-	// DLSS: every scene target below is built at the internal render resolution,
+	// Upscaler: every scene target below is built at the internal render resolution,
 	// Device.dwWidth/dwHeight are restored to the output resolution at the end of the constructor
-	b_postprocess_dlss = nullptr;
-	m_dlss_enabled = false;
-	m_dlss_in_scene = false;
-	m_dlss_upscaled = false;
-	m_dlss_reset = true;
-	m_dlss_output_w = m_dlss_render_w = Device.dwWidth;
-	m_dlss_output_h = m_dlss_render_h = Device.dwHeight;
-	m_dlss_jitter_phases = 8;
-	m_dlss_jitter_index = 0;
-	m_dlss_jitter.set(0.f, 0.f);
-	m_dlss_last_frame = 0;
-	m_dlss_last_cam.set(0.f, 0.f, 0.f);
-	m_dlss_saved_zb = nullptr;
+	b_postprocess_upscaled = nullptr;
+	m_upscaler = GetUpscaler(RImplementation.o.upscaler);
+	m_upscale_enabled = false;
+	m_upscale_in_scene = false;
+	m_upscale_done = false;
+	m_upscale_reset = true;
+	m_upscale_output_w = m_upscale_render_w = Device.dwWidth;
+	m_upscale_output_h = m_upscale_render_h = Device.dwHeight;
+	m_upscale_jitter_phases = 8;
+	m_upscale_jitter_index = 0;
+	m_upscale_jitter.set(0.f, 0.f);
+	m_upscale_last_frame = 0;
+	m_upscale_last_cam.set(0.f, 0.f, 0.f);
+	m_upscale_saved_zb = nullptr;
 
-	if (RImplementation.o.dlss)
+	if (m_upscaler)
 	{
-		g_DLSS.GetRenderSize(m_dlss_output_w, m_dlss_output_h, ps_r4_dlss_quality, m_dlss_render_w, m_dlss_render_h);
-		if (g_DLSS.CreateFeature(m_dlss_render_w, m_dlss_render_h, m_dlss_output_w, m_dlss_output_h, ps_r4_dlss_quality))
+		m_upscaler->GetRenderSize(m_upscale_output_w, m_upscale_output_h, ps_r4_upscaler_quality, m_upscale_render_w, m_upscale_render_h);
+		if (m_upscaler->CreateFeature(m_upscale_render_w, m_upscale_render_h, m_upscale_output_w, m_upscale_output_h, ps_r4_upscaler_quality))
 		{
-			m_dlss_enabled = true;
-			m_dlss_jitter_phases = CDLSS::GetJitterPhaseCount(m_dlss_render_w, m_dlss_output_w);
-			Device.dwWidth = m_dlss_render_w;
-			Device.dwHeight = m_dlss_render_h;
+			m_upscale_enabled = true;
+			m_upscale_jitter_phases = CUpscaler::GetJitterPhaseCount(m_upscale_render_w, m_upscale_output_w);
+			Device.dwWidth = m_upscale_render_w;
+			Device.dwHeight = m_upscale_render_h;
 		}
 		else
 		{
-			m_dlss_render_w = m_dlss_output_w;
-			m_dlss_render_h = m_dlss_output_h;
+			m_upscaler = nullptr;
+			m_upscale_render_w = m_upscale_output_w;
+			m_upscale_render_h = m_upscale_output_h;
 		}
 	}
 
@@ -588,7 +590,7 @@ CRenderTarget::CRenderTarget()
 		rt_dof.create(r2_RT_dof, w, h, RImplementation.o.dx11_hdr10 ? D3DFMT_A16B16G16R16F : D3DFMT_A8R8G8B8);
 
 		// Copies of the backbuffer, always at output resolution (differs from w,h with DLSS)
-		const u32 out_w = m_dlss_output_w, out_h = m_dlss_output_h;
+		const u32 out_w = m_upscale_output_w, out_h = m_upscale_output_h;
 		if (RImplementation.o.dx11_hdr10) {
 			rt_secondVP.create(r2_RT_secondVP, out_w, out_h, D3DFMT_A2R10G10B10, 1); //--#SM+#-- +SecondVP+ // NOTE: this is a hack to use DXGI R10G10B10A2_UNORM
 			rt_ui_pda.create(r2_RT_ui, out_w, out_h, D3DFMT_A2R10G10B10); // NOTE: this is a hack to use DXGI R10G10B10A2_UNORM
@@ -1047,8 +1049,8 @@ CRenderTarget::CRenderTarget()
 		// Testure for async sreenshots
 		{
 			D3D_TEXTURE2D_DESC desc;
-			desc.Width = m_dlss_output_w; // copy of the backbuffer
-			desc.Height = m_dlss_output_h;
+			desc.Width = m_upscale_output_w; // copy of the backbuffer
+			desc.Height = m_upscale_output_h;
 			desc.MipLevels = 1;
 			desc.ArraySize = 1;
 			desc.SampleDesc.Count = 1;
@@ -1332,18 +1334,18 @@ CRenderTarget::CRenderTarget()
 	s_menu.create("distort");
 	g_menu.create(FVF::F_TL, RCache.Vertex.Buffer(), RCache.QuadIB);
 
-	// DLSS: depth readable by NGX, upscaled color and the final pass reading it
-	if (m_dlss_enabled)
+	// Upscaler: depth readable by the upscaler, upscaled color and the final pass reading it
+	if (m_upscale_enabled)
 	{
-		rt_dlss_depth.create(r4_RT_dlss_depth, m_dlss_render_w, m_dlss_render_h, D3DFMT_D24S8);
-		rt_dlss_output.create(r4_RT_dlss_output, m_dlss_output_w, m_dlss_output_h, D3DFMT_A16B16G16R16F, 1, true);
-		b_postprocess_dlss = xr_new<CBlender_postprocess_dlss>();
-		s_postprocess_dlss.create(b_postprocess_dlss, "r4\\postprocess_dlss");
+		rt_upscale_depth.create(r4_RT_upscale_depth, m_upscale_render_w, m_upscale_render_h, D3DFMT_D24S8);
+		rt_upscale_output.create(r4_RT_upscale_output, m_upscale_output_w, m_upscale_output_h, D3DFMT_A16B16G16R16F, 1, true);
+		b_postprocess_upscaled = xr_new<CBlender_postprocess_upscaled>();
+		s_postprocess_upscaled.create(b_postprocess_upscaled, "r4\\postprocess_upscaled");
 
-		Device.dwWidth = m_dlss_output_w;
-		Device.dwHeight = m_dlss_output_h;
+		Device.dwWidth = m_upscale_output_w;
+		Device.dwHeight = m_upscale_output_h;
 	}
-	g_svp_keep_main_prev = m_dlss_enabled;
+	g_svp_keep_main_prev = m_upscale_enabled;
 
 	//
 	dwWidth = Device.dwWidth;
@@ -1352,10 +1354,11 @@ CRenderTarget::CRenderTarget()
 
 CRenderTarget::~CRenderTarget()
 {
-	dlss_end_scene();
-	g_DLSS.ReleaseFeature();
+	upscale_end_scene();
+	if (m_upscaler)
+		m_upscaler->ReleaseFeature();
 	g_svp_keep_main_prev = false;
-	xr_delete(b_postprocess_dlss);
+	xr_delete(b_postprocess_upscaled);
 
 	_RELEASE(t_ss_async);
 

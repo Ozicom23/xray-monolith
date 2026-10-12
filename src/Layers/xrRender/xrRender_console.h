@@ -226,11 +226,12 @@ extern ECORE_API int   ps_r4_hdr10_pda;  			// r4-only (NOTE: this is a hack to 
 extern ECORE_API int   ps_r4_hdr10_on; 			  	// r4-only
 extern ECORE_API float ps_r4_hdr10_pda_intensity; 	// r4-only
 
-/* --- DLSS parameters --- */
-extern ECORE_API int      ps_r4_dlss;          // r4-only
-extern ECORE_API u32      ps_r4_dlss_quality;  // r4-only
-extern ECORE_API Fvector4 ps_r4_dlss_signs;    // r4-only
-extern ECORE_API int      ps_r4_dlss_log;      // r4-only
+/* --- Upscaler (DLSS / FSR) parameters --- */
+extern ECORE_API u32      ps_r4_upscaler;         // r4-only, EUpscalerType
+extern ECORE_API u32      ps_r4_upscaler_quality; // r4-only, EUpscalerQuality
+extern ECORE_API float    ps_r4_fsr_sharpness;    // r4-only
+extern ECORE_API Fvector4 ps_r4_upscaler_signs;   // r4-only
+extern ECORE_API int      ps_r4_dlss_log;         // r4-only
 
 extern ECORE_API int   ps_r4_hdr10_tonemapper;    		 // r4-only
 extern ECORE_API int   ps_r4_hdr10_tonemap_mode;  		 // r4-only

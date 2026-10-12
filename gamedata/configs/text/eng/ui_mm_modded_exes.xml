@@ -19,31 +19,46 @@
 		<text>Saves current weather conditions so they will be exactly recreated on load</text>
 	</string>
 
-	<string id="ui_mm_video_advanced_dlss">
+	<string id="ui_mm_video_advanced_upscaler">
+		<text>Upscaler</text>
+	</string>
+	<string id="ui_mm_video_advanced_upscaler_desc">
+		<text>Renders the 3D scene at a lower resolution and upscales it with a temporal upscaler. NVIDIA DLSS needs an NVIDIA RTX GPU and nvngx_dlss.dll next to the exe. AMD FSR 3.1 works on any DX11 GPU. Both need Screen Space Shaders (for motion vectors), replace SMAA and SSS TAA, and need MSAA off. (r4_upscaler)</text>
+	</string>
+	<string id="ui_mm_video_advanced_upscaler_quality">
+		<text>Upscaler Mode</text>
+	</string>
+	<string id="ui_mm_video_advanced_upscaler_quality_desc">
+		<text>Internal render resolution. DLSS: Native (DLAA) 100%, Quality 67%, Balanced 58%, Performance 50%, Ultra Performance 33%. FSR: Native AA 100%, Quality 67%, Balanced 59%, Performance 50%, Ultra Performance 33%. (r4_upscaler_quality)</text>
+	</string>
+	<string id="ui_mm_video_advanced_fsr_sharpness">
+		<text>FSR Sharpness</text>
+	</string>
+	<string id="ui_mm_video_advanced_fsr_sharpness_desc">
+		<text>Sharpening applied by FSR after upscaling (RCAS). 0 turns it off. DLSS ignores it. (r4_fsr_sharpness)</text>
+	</string>
+	<string id="ui_mm_lst_upscaler_off">
+		<text>Off</text>
+	</string>
+	<string id="ui_mm_lst_upscaler_dlss">
 		<text>NVIDIA DLSS</text>
 	</string>
-	<string id="ui_mm_video_advanced_dlss_desc">
-		<text>Renders the 3D scene at a lower resolution and upscales it with NVIDIA DLSS Super Resolution. Requires an NVIDIA RTX GPU, nvngx_dlss.dll next to the exe and Screen Space Shaders (for motion vectors). Replaces SMAA and SSS TAA. MSAA must be off. (r4_dlss)</text>
+	<string id="ui_mm_lst_upscaler_fsr">
+		<text>AMD FSR 3.1</text>
 	</string>
-	<string id="ui_mm_video_advanced_dlss_quality">
-		<text>DLSS Mode</text>
+	<string id="ui_mm_lst_upscaler_native">
+		<text>Native AA (DLAA)</text>
 	</string>
-	<string id="ui_mm_video_advanced_dlss_quality_desc">
-		<text>Internal render resolution: DLAA 100%, Quality 67%, Balanced 58%, Performance 50%, Ultra Performance 33%. (r4_dlss_quality)</text>
-	</string>
-	<string id="ui_mm_lst_dlss_dlaa">
-		<text>DLAA</text>
-	</string>
-	<string id="ui_mm_lst_dlss_quality">
+	<string id="ui_mm_lst_upscaler_quality">
 		<text>Quality</text>
 	</string>
-	<string id="ui_mm_lst_dlss_balanced">
+	<string id="ui_mm_lst_upscaler_balanced">
 		<text>Balanced</text>
 	</string>
-	<string id="ui_mm_lst_dlss_performance">
+	<string id="ui_mm_lst_upscaler_performance">
 		<text>Performance</text>
 	</string>
-	<string id="ui_mm_lst_dlss_ultra_performance">
+	<string id="ui_mm_lst_upscaler_ultra_performance">
 		<text>Ultra Performance</text>
 	</string>
 

@@ -66,8 +66,8 @@
 
 #define		r2_RT_pp_bloom	"$user$pp_bloom"
 
-#define		r4_RT_dlss_output	"$user$dlss_output"	// DLSS upscaled color, output resolution
-#define		r4_RT_dlss_depth	"$user$dlss_depth"	// DLSS scene depth/stencil, render resolution
+#define		r4_RT_upscale_output	"$user$upscale_output"	// upscaled color (DLSS / FSR), output resolution
+#define		r4_RT_upscale_depth	"$user$upscale_depth"	// upscaler scene depth/stencil, render resolution
 
 #define 	r4_RT_HDR10_halfres0 "$user$hdr10_halfres0"
 #define 	r4_RT_HDR10_halfres1 "$user$hdr10_halfres1"

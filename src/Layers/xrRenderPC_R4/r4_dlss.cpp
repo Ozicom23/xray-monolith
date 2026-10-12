@@ -6,32 +6,6 @@ CDLSS g_DLSS;
 // Fallback render scale per quality mode, used when NGX cannot report the optimal settings
 static const float s_dlss_scale[] = { 1.f / 3.f, 0.5f, 0.58f, 2.f / 3.f, 1.f };
 
-static float halton(u32 index, u32 base)
-{
-	float f = 1.f, r = 0.f;
-	while (index > 0)
-	{
-		f /= float(base);
-		r += f * float(index % base);
-		index /= base;
-	}
-	return r;
-}
-
-void CDLSS::GetJitter(u32 index, u32 phase_count, float& x, float& y)
-{
-	const u32 i = (index % phase_count) + 1;
-	x = halton(i, 2) - 0.5f;
-	y = halton(i, 3) - 0.5f;
-}
-
-u32 CDLSS::GetJitterPhaseCount(u32 render_w, u32 out_w)
-{
-	// NVIDIA recommends at least 8 phases per output pixel covered by a render pixel
-	const float ratio = float(out_w) / float(_max(render_w, 1u));
-	return _max(8u, u32(iCeil(8.f * ratio * ratio)));
-}
-
 #ifdef XR_DLSS_SDK
 
 #include <nvsdk_ngx_helpers.h>
@@ -45,10 +19,10 @@ static NVSDK_NGX_PerfQuality_Value to_ngx_quality(u32 quality)
 {
 	switch (quality)
 	{
-	case CDLSS::qUltraPerformance: return NVSDK_NGX_PerfQuality_Value_UltraPerformance;
-	case CDLSS::qPerformance: return NVSDK_NGX_PerfQuality_Value_MaxPerf;
-	case CDLSS::qBalanced: return NVSDK_NGX_PerfQuality_Value_Balanced;
-	case CDLSS::qDLAA: return NVSDK_NGX_PerfQuality_Value_DLAA;
+	case upscaler_quality_ultra_performance: return NVSDK_NGX_PerfQuality_Value_UltraPerformance;
+	case upscaler_quality_performance: return NVSDK_NGX_PerfQuality_Value_MaxPerf;
+	case upscaler_quality_balanced: return NVSDK_NGX_PerfQuality_Value_Balanced;
+	case upscaler_quality_native: return NVSDK_NGX_PerfQuality_Value_DLAA;
 	default: return NVSDK_NGX_PerfQuality_Value_MaxQuality;
 	}
 }
@@ -150,11 +124,11 @@ void CDLSS::Shutdown()
 
 void CDLSS::GetRenderSize(u32 out_w, u32 out_h, u32 quality, u32& render_w, u32& render_h)
 {
-	quality = _min(quality, u32(qDLAA));
+	quality = _min(quality, u32(upscaler_quality_native));
 	render_w = u32(iFloor(float(out_w) * s_dlss_scale[quality] + 0.5f));
 	render_h = u32(iFloor(float(out_h) * s_dlss_scale[quality] + 0.5f));
 
-	if (m_available && m_params && quality != qDLAA)
+	if (m_available && m_params && quality != upscaler_quality_native)
 	{
 		unsigned int opt_w = 0, opt_h = 0, max_w = 0, max_h = 0, min_w = 0, min_h = 0;
 		float sharpness = 0.f;
@@ -210,7 +184,7 @@ void CDLSS::ReleaseFeature()
 	}
 }
 
-bool CDLSS::Evaluate(const EvalParams& p)
+bool CDLSS::Evaluate(const UpscalerEvalParams& p)
 {
 	if (!m_handle)
 		return false;
@@ -265,6 +239,6 @@ void CDLSS::GetRenderSize(u32 out_w, u32 out_h, u32, u32& render_w, u32& render_
 
 bool CDLSS::CreateFeature(u32, u32, u32, u32, u32) { return false; }
 void CDLSS::ReleaseFeature() {}
-bool CDLSS::Evaluate(const EvalParams&) { return false; }
+bool CDLSS::Evaluate(const UpscalerEvalParams&) { return false; }
 
 #endif // XR_DLSS_SDK

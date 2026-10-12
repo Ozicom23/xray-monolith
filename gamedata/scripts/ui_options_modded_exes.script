@@ -115,7 +115,7 @@ function on_xml_read()
 			end
 		end
 
-		-- DLSS (DX11 only), below SMAA in Video > Advanced
+		-- Upscaler (DLSS / FSR, DX11 only), below SMAA in Video > Advanced
 		local advanced = nil
 		for _, top in ipairs(ui_options.options) do
 			if top.id == "video" and top.gr then
@@ -129,7 +129,7 @@ function on_xml_read()
 			local already_present = false
 			local insert_idx = #advanced.gr + 1
 			for i, row in ipairs(advanced.gr) do
-				if row.id == "dlss" then
+				if row.id == "upscaler" then
 					already_present = true
 					break
 				end
@@ -139,30 +139,45 @@ function on_xml_read()
 			end
 			if not already_present then
 				local for_r4 = {ui_options.for_renderer, "renderer_r4"}
-				table.insert(advanced.gr, insert_idx, {
-					id           = "dlss",
-					type         = "list",
-					val          = 0,
-					cmd          = "r4_dlss",
-					content      = {{"1", "ON"}, {"0", "OFF"}},
-					vid          = true,
-					precondition = for_r4,
-				})
-				table.insert(advanced.gr, insert_idx + 1, {
-					id           = "dlss_quality",
-					type         = "list",
-					val          = 0,
-					cmd          = "r4_dlss_quality",
-					content      = {
-						{"dlaa", "dlss_dlaa"},
-						{"quality", "dlss_quality"},
-						{"balanced", "dlss_balanced"},
-						{"performance", "dlss_performance"},
-						{"ultra_performance", "dlss_ultra_performance"},
+				local rows = {
+					{
+						id           = "upscaler",
+						type         = "list",
+						val          = 0,
+						cmd          = "r4_upscaler",
+						content      = {{"off", "upscaler_off"}, {"dlss", "upscaler_dlss"}, {"fsr", "upscaler_fsr"}},
+						vid          = true,
+						precondition = for_r4,
 					},
-					vid          = true,
-					precondition = for_r4,
-				})
+					{
+						id           = "upscaler_quality",
+						type         = "list",
+						val          = 0,
+						cmd          = "r4_upscaler_quality",
+						content      = {
+							{"native", "upscaler_native"},
+							{"quality", "upscaler_quality"},
+							{"balanced", "upscaler_balanced"},
+							{"performance", "upscaler_performance"},
+							{"ultra_performance", "upscaler_ultra_performance"},
+						},
+						vid          = true,
+						precondition = for_r4,
+					},
+					{
+						id           = "fsr_sharpness",
+						type         = "track",
+						val          = 2,
+						cmd          = "r4_fsr_sharpness",
+						min          = 0,
+						max          = 1,
+						step         = 0.05,
+						precondition = for_r4,
+					},
+				}
+				for i, row in ipairs(rows) do
+					table.insert(advanced.gr, insert_idx + i - 1, row)
+				end
 				need_init_opt_coder = true
 			end
 		end

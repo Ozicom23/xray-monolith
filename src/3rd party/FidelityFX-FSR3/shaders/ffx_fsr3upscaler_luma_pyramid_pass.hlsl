@@ -25,13 +25,15 @@
 
 #define FSR3UPSCALER_BIND_UAV_SPD_GLOBAL_ATOMIC               0
 #define FSR3UPSCALER_BIND_UAV_FRAME_INFO                      1
-#define FSR3UPSCALER_BIND_UAV_SPD_MIPS_LEVEL_0                2
-#define FSR3UPSCALER_BIND_UAV_SPD_MIPS_LEVEL_1                3
-#define FSR3UPSCALER_BIND_UAV_SPD_MIPS_LEVEL_2                4
-#define FSR3UPSCALER_BIND_UAV_SPD_MIPS_LEVEL_3                5
-#define FSR3UPSCALER_BIND_UAV_SPD_MIPS_LEVEL_4                6
-#define FSR3UPSCALER_BIND_UAV_SPD_MIPS_LEVEL_5                7
-#define FSR3UPSCALER_BIND_UAV_FARTHEST_DEPTH_MIP1             8
+// XRAY-DX11: D3D11.0 compute shaders have 8 UAV slots (u0-u7). Only mip 5 and farthest depth mip 1
+// are used by this pass, so they take the low slots; the unused mip levels are compiled out.
+#define FSR3UPSCALER_BIND_UAV_SPD_MIPS_LEVEL_5                2
+#define FSR3UPSCALER_BIND_UAV_FARTHEST_DEPTH_MIP1             3
+#define FSR3UPSCALER_BIND_UAV_SPD_MIPS_LEVEL_0                4
+#define FSR3UPSCALER_BIND_UAV_SPD_MIPS_LEVEL_1                5
+#define FSR3UPSCALER_BIND_UAV_SPD_MIPS_LEVEL_2                6
+#define FSR3UPSCALER_BIND_UAV_SPD_MIPS_LEVEL_3                7
+#define FSR3UPSCALER_BIND_UAV_SPD_MIPS_LEVEL_4                8
 
 
 #define FSR3UPSCALER_BIND_CB_FSR3UPSCALER                     0

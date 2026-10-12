@@ -145,13 +145,13 @@ void CBlender_postprocess_msaa::Compile(CBlender_Compile& C)
 	}
 }
 
-CBlender_postprocess_dlss::CBlender_postprocess_dlss() { description.CLS = 0; }
+CBlender_postprocess_upscaled::CBlender_postprocess_upscaled() { description.CLS = 0; }
 
-CBlender_postprocess_dlss::~CBlender_postprocess_dlss()
+CBlender_postprocess_upscaled::~CBlender_postprocess_upscaled()
 {
 }
 
-void CBlender_postprocess_dlss::Compile(CBlender_Compile& C)
+void CBlender_postprocess_upscaled::Compile(CBlender_Compile& C)
 {
 	IBlender::Compile(C);
 
@@ -160,8 +160,8 @@ void CBlender_postprocess_dlss::Compile(CBlender_Compile& C)
 	case 0:
 		C.r_Pass("stub_notransform_postpr", "postprocess", FALSE, FALSE, FALSE, FALSE, D3DBLEND_SRCALPHA,
 		         D3DBLEND_INVSRCALPHA);
-		C.r_dx10Texture("s_base0", r4_RT_dlss_output);
-		C.r_dx10Texture("s_base1", r4_RT_dlss_output);
+		C.r_dx10Texture("s_base0", r4_RT_upscale_output);
+		C.r_dx10Texture("s_base1", r4_RT_upscale_output);
 		C.r_dx10Texture("s_noise", "fx\\fx_noise2");
 
 		C.r_dx10Sampler("smp_rtlinear");
@@ -172,8 +172,8 @@ void CBlender_postprocess_dlss::Compile(CBlender_Compile& C)
 	case 4: // use color map
 		C.r_Pass("stub_notransform_postpr", "postprocess_CM", FALSE, FALSE, FALSE, FALSE, D3DBLEND_SRCALPHA,
 		         D3DBLEND_INVSRCALPHA);
-		C.r_dx10Texture("s_base0", r4_RT_dlss_output);
-		C.r_dx10Texture("s_base1", r4_RT_dlss_output);
+		C.r_dx10Texture("s_base0", r4_RT_upscale_output);
+		C.r_dx10Texture("s_base1", r4_RT_upscale_output);
 		C.r_dx10Texture("s_noise", "fx\\fx_noise2");
 		C.r_dx10Texture("s_grad0", "$user$cmap0");
 		C.r_dx10Texture("s_grad1", "$user$cmap1");

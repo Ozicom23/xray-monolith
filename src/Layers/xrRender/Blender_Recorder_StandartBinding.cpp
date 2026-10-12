@@ -1162,10 +1162,10 @@ static class ssfx_jitter : public R_constant_setup
 		float JitterY = 0;
 
 #if defined(USE_DX11)
-		// DLSS: Halton jitter in clip space, replaces the SSS TAA pattern
-		if (RImplementation.dlss_jitter_on)
+		// Upscaler (DLSS / FSR): Halton jitter in clip space, replaces the SSS TAA pattern
+		if (RImplementation.upscale_jitter_on)
 		{
-			RCache.set_c(C, RImplementation.dlss_jitter_ndc.x, RImplementation.dlss_jitter_ndc.y, ps_ssfx_taa.x, ps_ssfx_taa.w);
+			RCache.set_c(C, RImplementation.upscale_jitter_ndc.x, RImplementation.upscale_jitter_ndc.y, ps_ssfx_taa.x, ps_ssfx_taa.w);
 			return;
 		}
 

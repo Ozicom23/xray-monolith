@@ -1,6 +1,11 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
+    <Filter Include="Core_Target\FidelityFX">
+      <UniqueIdentifier>{6a1f6d2e-3c64-4b7e-9f0d-2f8f2c4b6a11}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
     <Filter Include="Kernel">
       <UniqueIdentifier>{7c3adbe0-c7f0-4969-bc3e-c99c57a78afc}</UniqueIdentifier>
     </Filter>
@@ -382,6 +387,12 @@
       <Filter>Visibility\HOM Occlusion</Filter>
     </ClInclude>
     <ClInclude Include="r4_dlss.h">
+      <Filter>Core_Target</Filter>
+    </ClInclude>
+    <ClInclude Include="r4_fsr3.h">
+      <Filter>Core_Target</Filter>
+    </ClInclude>
+    <ClInclude Include="r4_upscaler.h">
       <Filter>Core_Target</Filter>
     </ClInclude>
     <ClInclude Include="r4_rendertarget.h">
@@ -1079,6 +1090,24 @@
     </ClCompile>
     <ClCompile Include="r4_dlss.cpp">
       <Filter>Core_Target</Filter>
+    </ClCompile>
+    <ClCompile Include="r4_fsr3.cpp">
+      <Filter>Core_Target</Filter>
+    </ClCompile>
+    <ClCompile Include="r4_upscaler.cpp">
+      <Filter>Core_Target</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\3rd party\FidelityFX-FSR3\src\components\fsr3upscaler\ffx_fsr3upscaler.cpp">
+      <Filter>Core_Target\FidelityFX</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\3rd party\FidelityFX-FSR3\src\shared\ffx_object_management.cpp">
+      <Filter>Core_Target\FidelityFX</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\3rd party\FidelityFX-FSR3\src\shared\ffx_assert.cpp">
+      <Filter>Core_Target\FidelityFX</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\3rd party\FidelityFX-FSR3\src\shared\ffx_message.cpp">
+      <Filter>Core_Target\FidelityFX</Filter>
     </ClCompile>
     <ClCompile Include="r4_rendertarget_phase_PP.cpp">
       <Filter>Core_Target</Filter>

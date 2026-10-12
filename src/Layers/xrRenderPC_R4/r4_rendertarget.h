@@ -18,20 +18,21 @@ private:
 	u32 dwHeight;
 	u32 dwAccumulatorClearMark;
 
-	// DLSS state
-	IBlender* b_postprocess_dlss;
-	bool m_dlss_enabled;
-	bool m_dlss_in_scene;
-	bool m_dlss_upscaled; // phase_pp reads rt_dlss_output this frame
-	bool m_dlss_reset;
-	u32 m_dlss_render_w, m_dlss_render_h;
-	u32 m_dlss_output_w, m_dlss_output_h;
-	u32 m_dlss_jitter_phases;
-	u32 m_dlss_jitter_index;
-	Fvector2 m_dlss_jitter; // render pixels
-	u32 m_dlss_last_frame;
-	Fvector m_dlss_last_cam;
-	ID3DDepthStencilView* m_dlss_saved_zb;
+	// Upscaler (DLSS / FSR) state
+	IBlender* b_postprocess_upscaled;
+	class CUpscaler* m_upscaler;
+	bool m_upscale_enabled;
+	bool m_upscale_in_scene;
+	bool m_upscale_done; // phase_pp reads rt_upscale_output this frame
+	bool m_upscale_reset;
+	u32 m_upscale_render_w, m_upscale_render_h;
+	u32 m_upscale_output_w, m_upscale_output_h;
+	u32 m_upscale_jitter_phases;
+	u32 m_upscale_jitter_index;
+	Fvector2 m_upscale_jitter; // render pixels
+	u32 m_upscale_last_frame;
+	Fvector m_upscale_last_cam;
+	ID3DDepthStencilView* m_upscale_saved_zb;
 public:
 	enum eStencilOptimizeMode
 	{
@@ -147,9 +148,9 @@ public:
 	ref_rt rt_dof;
 	ref_rt rt_ui_pda;
 
-	// DLSS
-	ref_rt rt_dlss_depth;  // scene depth/stencil at render resolution, readable by DLSS
-	ref_rt rt_dlss_output; // upscaled scene color at output resolution
+	// Upscaler (DLSS / FSR)
+	ref_rt rt_upscale_depth;  // scene depth/stencil at render resolution, readable by the upscaler
+	ref_rt rt_upscale_output; // upscaled scene color at output resolution
 
 	ref_rt rt_blur_h_2;
 	ref_rt rt_blur_2;
@@ -382,7 +383,7 @@ private:
 public:
 	ref_shader s_postprocess;
 	ref_shader s_postprocess_msaa;
-	ref_shader s_postprocess_dlss;
+	ref_shader s_postprocess_upscaled;
 	ref_geom g_postprocess;
 	ref_shader s_menu;
 	ref_geom g_menu;
@@ -522,16 +523,16 @@ public:
 	void phase_combine_volumetric();
 	void phase_pp();
 
-	// DLSS: the 3D scene renders at dlss_render_w x dlss_render_h and is upscaled before phase_pp.
-	// Between dlss_begin_scene() and dlss_end_scene() Device.dwWidth/dwHeight and HW.pBaseZB
+	// Upscaler: the 3D scene renders at upscale_render_width() x upscale_render_height() and is upscaled before phase_pp.
+	// Between upscale_begin_scene() and upscale_end_scene() Device.dwWidth/dwHeight and HW.pBaseZB
 	// describe the render resolution, so the existing passes need no changes.
-	bool dlss_enabled() const { return m_dlss_enabled; }
-	bool dlss_in_scene() const { return m_dlss_in_scene; }
-	u32 dlss_render_width() const { return m_dlss_render_w; }
-	u32 dlss_render_height() const { return m_dlss_render_h; }
-	void dlss_begin_scene();
-	void dlss_end_scene();
-	void phase_dlss();
+	bool upscale_enabled() const { return m_upscale_enabled; }
+	bool upscale_in_scene() const { return m_upscale_in_scene; }
+	u32 upscale_render_width() const { return m_upscale_render_w; }
+	u32 upscale_render_height() const { return m_upscale_render_h; }
+	void upscale_begin_scene();
+	void upscale_end_scene();
+	void phase_upscale();
 
 	virtual void set_blur(float f) { param_blur = f; }
 	virtual void set_gray(float f) { param_gray = f; }
