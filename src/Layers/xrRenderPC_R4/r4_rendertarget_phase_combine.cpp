@@ -553,7 +553,12 @@ void CRenderTarget::phase_combine()
 
 	phase_lut();	
 
-	if(ps_r2_mask_control.x > 0)
+	// With an upscaler gas mask, night vision and shader scopes run after it, at output resolution (phase_upscale): its
+	// history smeared their per-frame noise, and the dim, blurred night vision image left trails behind moving things,
+	// held items most
+	m_overlays_after_upscale = m_upscale_in_scene && !Device.m_SecondViewport.IsSVPFrame() && ps_r4_upscaler_late_overlays;
+
+	if(ps_r2_mask_control.x > 0 && !m_overlays_after_upscale)
 	{
 		phase_gasmask_dudv();
 		if (ps_r2_drops_control.x > 0)
@@ -562,7 +567,7 @@ void CRenderTarget::phase_combine()
 		}
 	}
 	
-	if(ps_r2_nightvision > 0)
+	if(ps_r2_nightvision > 0 && !m_overlays_after_upscale)
 		phase_nightvision();
 
 	//--DSR-- HeatVision_start
@@ -570,7 +575,7 @@ void CRenderTarget::phase_combine()
 		phase_heatvision();
 	//--DSR-- HeatVision_end
 
-	if (scope_fake_enabled)
+	if (scope_fake_enabled && !m_overlays_after_upscale)
 	{
 		phase_fakescope(); //crookr
 	}
@@ -914,4 +919,38 @@ void CRenderTarget::phase_combine_volumetric()
 		RCache.Render(D3DPT_TRIANGLELIST, Offset, 0, 4, 0, 2);
 	}
 	RCache.set_ColorWriteEnable();
+}
+
+// Gas mask, night vision and shader scopes held back for the upscaler (phase_combine), in the same order
+void CRenderTarget::phase_screen_overlays()
+{
+	if (ps_r2_mask_control.x > 0)
+	{
+		phase_gasmask_dudv();
+		if (ps_r2_drops_control.x > 0)
+			phase_gasmask_drops();
+	}
+	if (ps_r2_nightvision > 0)
+		phase_nightvision();
+	if (scope_fake_enabled)
+		phase_fakescope(); //crookr
+}
+
+// The same over the upscaled image. Their shaders read the scene image as s_image (rt_Generic_0): pointed at the
+// upscaled image for these passes. Device.dwRenderWidth stays at render resolution until upscale_end_scene, so
+// screen_res and their reads of render resolution buffers (position, blur) stay as before the upscaler
+void CRenderTarget::phase_screen_overlays_upscaled()
+{
+	if (!(ps_r2_mask_control.x > 0) && !(ps_r2_nightvision > 0) && !scope_fake_enabled)
+		return;
+	ID3DBaseTexture* own = rt_Generic_0->pTexture->surface_get();
+	rt_Generic_0->pTexture->surface_set(rt_upscale_output->pSurface);
+	m_overlay_target = &rt_upscale_overlay;
+	set_viewport_size(HW.pContext, float(m_upscale_output_w), float(m_upscale_output_h));
+
+	phase_screen_overlays();
+
+	m_overlay_target = nullptr;
+	rt_Generic_0->pTexture->surface_set(own);
+	_RELEASE(own);
 }

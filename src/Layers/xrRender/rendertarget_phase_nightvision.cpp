@@ -23,7 +23,7 @@ void CRenderTarget::phase_nightvision()
 	//////////////////////////////////////////////////////////////////////////
 	//Set MSAA/NonMSAA rendertarget
 #if defined(USE_DX10) || defined(USE_DX11)
-	ref_rt& dest_rt = RImplementation.o.dx10_msaa ? rt_Generic : rt_Color;
+	ref_rt& dest_rt = overlay_target(); // after an upscaler: output resolution (phase_screen_overlays_upscaled)
 	u_setrt(dest_rt, nullptr, nullptr, nullptr);
 #else
 	u_setrt(rt_Generic_0, nullptr, nullptr, nullptr);
@@ -77,7 +77,7 @@ void CRenderTarget::phase_fakescope()
 	//////////////////////////////////////////////////////////////////////////
 	//Set MSAA/NonMSAA rendertarget
 #if defined(USE_DX10) || defined(USE_DX11)
-	ref_rt& dest_rt = RImplementation.o.dx10_msaa ? rt_Generic : rt_Color;
+	ref_rt& dest_rt = overlay_target(); // after an upscaler: output resolution (phase_screen_overlays_upscaled)
 	u_setrt(dest_rt, nullptr, nullptr, nullptr);
 
 	RCache.set_CullMode(CULL_NONE);

@@ -25,6 +25,7 @@ struct UpscalerEvalParams
 	ID3D11Resource* output; // output resolution, UAV
 	ID3D11Resource* depth;  // render resolution, regular (non-inverted) depth
 	ID3D11Resource* motion; // render resolution, motion vectors (scaled by mv_scale to previous - current in pixels)
+	ID3D11Resource* reactive; // render resolution R8, or null: 0 = blend with history as usual, 1 = current frame only
 	float jitter_x;         // render pixels, +x right, +y down
 	float jitter_y;
 	float mv_scale_x;

@@ -339,6 +339,10 @@ float ps_r4_fsr_sharpness         = 0.3f;   // r4-only, FSR RCAS sharpening, 0 =
 Fvector4 ps_r4_fsr_tuning         = { 1.f, 1.f, 1.f, 1.f }; // AMD defaults 1,1,0.333,-0.333 shimmer on thin geometry (wires, fences)
 int   ps_r4_fsr_debug_view        = 0;      // r4-only, FSR's on-screen debug view of its internal buffers
 Fvector4 ps_r4_upscaler_signs     = { 1, 1, 1, 1 }; // r4-only, debug: motion vector x/y and jitter x/y sign multipliers
+// r4-only: how much the upscaler trusts the current frame over its history: 3D scope lenses, foliage (wind isn't in
+// its motion vectors), first-person items. 0 = history as usual, 1 = current frame only
+Fvector4 ps_r4_upscaler_mask      = { 1.f, 0.5f, 0.f, 0.f };
+int   ps_r4_upscaler_late_overlays = 1;     // r4-only, gas mask, night/heat vision and shader scopes after the upscaler
 
 // Performance overlay (r4-only)
 u32 ps_perf_overlay = 0; // 0 off, 1 compact, 2 detailed
@@ -1347,6 +1351,8 @@ void xrRender_initconsole()
 	CMD4(CCC_Vector4, "r4_fsr_tuning",            &ps_r4_fsr_tuning, Fvector4().set(0, 0, 0, -1), Fvector4().set(1, 8, 1, 1));
 	CMD4(CCC_Integer, "r4_fsr_debug_view",        &ps_r4_fsr_debug_view,             0, 1);
 	CMD4(CCC_Vector4, "r4_upscaler_signs",        &ps_r4_upscaler_signs, Fvector4().set(-1, -1, -1, -1), Fvector4().set(1, 1, 1, 1));
+	CMD4(CCC_Vector4, "r4_upscaler_mask",         &ps_r4_upscaler_mask, Fvector4().set(0, 0, 0, 0), Fvector4().set(1, 1, 1, 1));
+	CMD4(CCC_Integer, "r4_upscaler_late_overlays", &ps_r4_upscaler_late_overlays,     0, 1);
 	CMD4(CCC_Integer, "r4_dlss_log",              &ps_r4_dlss_log,                   0, 2);
 #if defined(USE_DX11)
 	CMD3(CCC_Token,   "perf_overlay",             &ps_perf_overlay,                  perf_overlay_token);

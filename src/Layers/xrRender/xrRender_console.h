@@ -235,6 +235,8 @@ extern ECORE_API float    ps_r4_fsr_sharpness;    // r4-only
 extern ECORE_API Fvector4 ps_r4_fsr_tuning;       // r4-only
 extern ECORE_API int      ps_r4_fsr_debug_view;   // r4-only
 extern ECORE_API Fvector4 ps_r4_upscaler_signs;   // r4-only
+extern ECORE_API Fvector4 ps_r4_upscaler_mask;    // r4-only
+extern ECORE_API int      ps_r4_upscaler_late_overlays; // r4-only
 extern ECORE_API int      ps_r4_dlss_log;         // r4-only
 
 /* --- Performance overlay --- */

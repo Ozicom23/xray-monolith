@@ -2,6 +2,215 @@
 #include "r4_rendertarget.h"
 #include "r4_upscaler.h"
 
+// The upscaler's mask (r4_upscaler_mask): where it should trust the current frame over its history. 3D scope lenses
+// (their reticle shader marks them with stencil 254) show the world through the scope, which moves unlike the lens;
+// SSS marks foliage in the motion vectors' w (branches -1, grass > 0), whose wind isn't in the branches' motion
+// vectors; first-person items are their z. Built by a small pass right before the upscaler runs.
+namespace upscale_mask
+{
+	ID3D11Texture2D* s_tex = nullptr;
+	ID3D11RenderTargetView* s_rtv = nullptr;
+	ID3D11ShaderResourceView* s_mv_srv = nullptr;
+	ID3D11ShaderResourceView* s_stencil_srv = nullptr;
+	ID3D11Resource* s_mv_res = nullptr; // the views above are of these
+	ID3D11Resource* s_depth_res = nullptr;
+	ID3D11VertexShader* s_vs = nullptr;
+	ID3D11PixelShader* s_ps = nullptr;
+	ID3D11Buffer* s_cb = nullptr;
+	ID3D11RasterizerState* s_rs = nullptr;
+	ID3D11DepthStencilState* s_ds = nullptr;
+	ID3D11BlendState* s_bs = nullptr;
+	u32 s_w = 0, s_h = 0;
+	bool s_failed = false;
+
+	const char* kShader =
+		"Texture2D<float4> s_mv : register(t0);\n"
+		"Texture2D<uint2> s_stencil : register(t1);\n"
+		"cbuffer params : register(b0) { float4 weight; };\n"
+		"float4 vs(uint id : SV_VertexID) : SV_Position\n"
+		"{\n"
+		"	float2 uv = float2((id << 1) & 2, id & 2);\n"
+		"	return float4(uv * float2(2, -2) + float2(-1, 1), 0, 1);\n"
+		"}\n"
+		"float ps(float4 pos : SV_Position) : SV_Target\n"
+		"{\n"
+		"	int3 p = int3(pos.xy, 0);\n"
+		"	float4 mv = s_mv.Load(p);\n"
+		"	float m = s_stencil.Load(p).g == 254 ? weight.x : 0;\n"
+		"	if (mv.w != 0) m = max(m, weight.y);\n"
+		"	if (mv.z > 0.5) m = max(m, weight.z);\n"
+		"	return m;\n"
+		"}\n";
+
+	void release()
+	{
+		_RELEASE(s_rtv);
+		_RELEASE(s_tex);
+		_RELEASE(s_mv_srv);
+		_RELEASE(s_stencil_srv);
+		s_mv_res = s_depth_res = nullptr;
+		_RELEASE(s_vs);
+		_RELEASE(s_ps);
+		_RELEASE(s_cb);
+		_RELEASE(s_rs);
+		_RELEASE(s_ds);
+		_RELEASE(s_bs);
+		s_w = s_h = 0;
+		s_failed = false;
+	}
+
+	static bool create_shaders()
+	{
+		if (s_ps)
+			return true;
+		if (s_failed)
+			return false;
+		ID3DBlob* vs = nullptr;
+		ID3DBlob* ps = nullptr;
+		ID3DBlob* err = nullptr;
+		HRESULT hr = D3DCompile(kShader, xr_strlen(kShader), "upscale_mask", nullptr, nullptr, "vs", "vs_5_0", 0, 0, &vs, &err);
+		if (SUCCEEDED(hr))
+			hr = D3DCompile(kShader, xr_strlen(kShader), "upscale_mask", nullptr, nullptr, "ps", "ps_5_0", 0, 0, &ps, &err);
+		if (SUCCEEDED(hr))
+			hr = HW.pDevice->CreateVertexShader(vs->GetBufferPointer(), vs->GetBufferSize(), nullptr, &s_vs);
+		if (SUCCEEDED(hr))
+			hr = HW.pDevice->CreatePixelShader(ps->GetBufferPointer(), ps->GetBufferSize(), nullptr, &s_ps);
+		if (SUCCEEDED(hr))
+		{
+			D3D11_BUFFER_DESC bd = {};
+			bd.ByteWidth = 16;
+			bd.Usage = D3D11_USAGE_DYNAMIC;
+			bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+			bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+			hr = HW.pDevice->CreateBuffer(&bd, nullptr, &s_cb);
+		}
+		if (SUCCEEDED(hr))
+		{
+			D3D11_RASTERIZER_DESC rd = {};
+			rd.FillMode = D3D11_FILL_SOLID;
+			rd.CullMode = D3D11_CULL_NONE;
+			rd.DepthClipEnable = TRUE;
+			hr = HW.pDevice->CreateRasterizerState(&rd, &s_rs);
+		}
+		if (SUCCEEDED(hr))
+		{
+			D3D11_DEPTH_STENCIL_DESC dd = {}; // no depth, no stencil
+			hr = HW.pDevice->CreateDepthStencilState(&dd, &s_ds);
+		}
+		if (SUCCEEDED(hr))
+		{
+			D3D11_BLEND_DESC bl = {};
+			bl.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+			hr = HW.pDevice->CreateBlendState(&bl, &s_bs);
+		}
+		if (FAILED(hr))
+		{
+			Msg("! Upscaler mask: shader setup failed: %s", err ? (const char*)err->GetBufferPointer() : "");
+			s_failed = true;
+		}
+		_RELEASE(vs);
+		_RELEASE(ps);
+		_RELEASE(err);
+		return !s_failed;
+	}
+
+	static bool ensure_targets(u32 w, u32 h, ID3D11Resource* mv, ID3D11Resource* depth)
+	{
+		if (s_tex && s_w == w && s_h == h && s_mv_res == mv && s_depth_res == depth)
+			return true;
+		_RELEASE(s_rtv);
+		_RELEASE(s_tex);
+		_RELEASE(s_mv_srv);
+		_RELEASE(s_stencil_srv);
+		s_mv_res = s_depth_res = nullptr;
+
+		D3D11_TEXTURE2D_DESC d = {};
+		d.Width = w;
+		d.Height = h;
+		d.MipLevels = d.ArraySize = 1;
+		d.Format = DXGI_FORMAT_R8_UNORM;
+		d.SampleDesc.Count = 1;
+		d.Usage = D3D11_USAGE_DEFAULT;
+		d.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+		HRESULT hr = HW.pDevice->CreateTexture2D(&d, nullptr, &s_tex);
+		if (SUCCEEDED(hr))
+			hr = HW.pDevice->CreateRenderTargetView(s_tex, nullptr, &s_rtv);
+		if (SUCCEEDED(hr))
+			hr = HW.pDevice->CreateShaderResourceView(mv, nullptr, &s_mv_srv);
+		if (SUCCEEDED(hr))
+		{
+			D3D11_SHADER_RESOURCE_VIEW_DESC sv = {};
+			sv.Format = DXGI_FORMAT_X24_TYPELESS_G8_UINT;
+			sv.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+			sv.Texture2D.MipLevels = 1;
+			hr = HW.pDevice->CreateShaderResourceView(depth, &sv, &s_stencil_srv);
+		}
+		if (FAILED(hr))
+		{
+			Msg("! Upscaler mask: targets failed (0x%08x)", hr);
+			_RELEASE(s_rtv);
+			_RELEASE(s_tex);
+			_RELEASE(s_mv_srv);
+			_RELEASE(s_stencil_srv);
+			s_failed = true;
+			return false;
+		}
+		s_w = w;
+		s_h = h;
+		s_mv_res = mv;
+		s_depth_res = depth;
+		return true;
+	}
+
+	// The mask for this frame, or null when nothing is masked. Raw D3D11: the caller resets the context and
+	// RCache's state afterwards (phase_upscale does around the upscaler anyway)
+	ID3D11Resource* build(u32 w, u32 h, ID3D11Resource* mv, ID3D11Resource* depth)
+	{
+		const Fvector4& wt = ps_r4_upscaler_mask;
+		if (wt.x <= 0.f && wt.y <= 0.f && wt.z <= 0.f)
+			return nullptr;
+		if (!mv || !depth || !create_shaders() || !ensure_targets(w, h, mv, depth))
+			return nullptr;
+
+		ID3D11DeviceContext* ctx = HW.pContext;
+		D3D11_MAPPED_SUBRESOURCE m;
+		if (FAILED(ctx->Map(s_cb, 0, D3D11_MAP_WRITE_DISCARD, 0, &m)))
+			return nullptr;
+		float* c = (float*)m.pData;
+		c[0] = wt.x;
+		c[1] = wt.y;
+		c[2] = wt.z;
+		c[3] = 0.f;
+		ctx->Unmap(s_cb, 0);
+
+		ctx->OMSetRenderTargets(1, &s_rtv, nullptr);
+		D3D11_VIEWPORT vp = { 0.f, 0.f, float(w), float(h), 0.f, 1.f };
+		ctx->RSSetViewports(1, &vp);
+		ctx->IASetInputLayout(nullptr);
+		ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		ctx->VSSetShader(s_vs, nullptr, 0);
+		ctx->GSSetShader(nullptr, nullptr, 0);
+		ctx->HSSetShader(nullptr, nullptr, 0);
+		ctx->DSSetShader(nullptr, nullptr, 0);
+		ctx->PSSetShader(s_ps, nullptr, 0);
+		ID3D11ShaderResourceView* srv[2] = { s_mv_srv, s_stencil_srv };
+		ctx->PSSetShaderResources(0, 2, srv);
+		ctx->PSSetConstantBuffers(0, 1, &s_cb);
+		ctx->RSSetState(s_rs);
+		ctx->OMSetDepthStencilState(s_ds, 0);
+		const float blend[4] = {};
+		ctx->OMSetBlendState(s_bs, blend, 0xffffffff);
+		ctx->Draw(3, 0);
+		ID3D11ShaderResourceView* none[2] = {};
+		ctx->PSSetShaderResources(0, 2, none);
+		ID3D11RenderTargetView* no_rtv = nullptr;
+		ctx->OMSetRenderTargets(1, &no_rtv, nullptr);
+		return s_tex;
+	}
+}
+
+void upscale_mask_release() { upscale_mask::release(); }
+
 void CRenderTarget::u_calc_tc_noise(Fvector2& p0, Fvector2& p1)
 {
 	CTexture* T = RCache.get_ActiveTexture(2);
@@ -269,8 +478,20 @@ void CRenderTarget::phase_upscale()
 		// The upscaler binds its own state, start and leave with a clean context
 		// (OnFrameEnd clears the D3D context and RCache's cached state)
 		RCache.OnFrameEnd();
+		p.reactive = upscale_mask::build(m_upscale_render_w, m_upscale_render_h, p.motion, p.depth);
 		m_upscale_done = m_upscaler->Evaluate(p);
 		RCache.OnFrameEnd();
+
+		// The screen overlays held back for this (phase_combine). Without an upscaled image at render resolution,
+		// onto rt_Color, which phase_pp stretches
+		if (m_overlays_after_upscale)
+		{
+			if (m_upscale_done)
+				phase_screen_overlays_upscaled();
+			else
+				phase_screen_overlays();
+			m_overlays_after_upscale = false;
+		}
 
 		if (m_upscale_done)
 		{

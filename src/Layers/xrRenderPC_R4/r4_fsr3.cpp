@@ -865,7 +865,7 @@ bool CFSR3::Evaluate(const UpscalerEvalParams& p)
 	d.depth = make_resource(p.depth, FFX_RESOURCE_STATE_COMPUTE_READ, L"FSR3_Depth");
 	d.motionVectors = make_resource(p.motion, FFX_RESOURCE_STATE_COMPUTE_READ, L"FSR3_MotionVectors");
 	d.exposure = make_resource(nullptr, FFX_RESOURCE_STATE_COMPUTE_READ, L"FSR3_Exposure");
-	d.reactive = make_resource(nullptr, FFX_RESOURCE_STATE_COMPUTE_READ, L"FSR3_Reactive");
+	d.reactive = make_resource(p.reactive, FFX_RESOURCE_STATE_COMPUTE_READ, L"FSR3_Reactive");
 	d.transparencyAndComposition = make_resource(nullptr, FFX_RESOURCE_STATE_COMPUTE_READ, L"FSR3_Transparency");
 	d.dilatedDepth = make_resource(m_shared[0], FFX_RESOURCE_STATE_UNORDERED_ACCESS, L"FSR3_DilatedDepth");
 	d.dilatedMotionVectors = make_resource(m_shared[1], FFX_RESOURCE_STATE_UNORDERED_ACCESS, L"FSR3_DilatedMotionVectors");

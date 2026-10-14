@@ -310,6 +310,7 @@ public:
 	void phase_gasmask_drops();
 	void phase_gasmask_dudv();
 	void phase_nightvision();
+	ref_rt& overlay_target(); // where the screen overlays (night vision, gas mask, shader scopes) draw
 	void phase_fakescope(); //crookr
 	void phase_heatvision(); //--DSR-- HeatVision
 	void phase_lut();

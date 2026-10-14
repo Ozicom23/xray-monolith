@@ -384,6 +384,8 @@ CRenderTarget::CRenderTarget()
 	m_upscale_last_frame = 0;
 	m_upscale_last_cam.set(0.f, 0.f, 0.f);
 	m_upscale_saved_zb = nullptr;
+	m_overlays_after_upscale = false;
+	m_overlay_target = nullptr;
 
 	if (m_upscaler)
 	{
@@ -1342,6 +1344,7 @@ CRenderTarget::CRenderTarget()
 	{
 		rt_upscale_depth.create(r4_RT_upscale_depth, m_upscale_render_w, m_upscale_render_h, D3DFMT_D24S8);
 		rt_upscale_output.create(r4_RT_upscale_output, m_upscale_output_w, m_upscale_output_h, D3DFMT_A16B16G16R16F, 1, true);
+		rt_upscale_overlay.create(r4_RT_upscale_overlay, m_upscale_output_w, m_upscale_output_h, D3DFMT_A16B16G16R16F, 1);
 		b_postprocess_upscaled = xr_new<CBlender_postprocess_upscaled>();
 		s_postprocess_upscaled.create(b_postprocess_upscaled, "r4\\postprocess_upscaled");
 
@@ -1359,9 +1362,19 @@ CRenderTarget::CRenderTarget()
 	dwHeight = Device.dwRenderHeight;
 }
 
+void upscale_mask_release();
+
+ref_rt& CRenderTarget::overlay_target()
+{
+	if (m_overlay_target)
+		return *m_overlay_target;
+	return RImplementation.o.dx10_msaa ? rt_Generic : rt_Color;
+}
+
 CRenderTarget::~CRenderTarget()
 {
 	upscale_end_scene();
+	upscale_mask_release();
 	if (m_upscaler)
 		m_upscaler->ReleaseFeature();
 	g_svp_keep_main_prev = false;

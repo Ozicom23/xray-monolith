@@ -1080,6 +1080,11 @@ CRenderTarget::CRenderTarget()
 	dwHeight = Device.dwHeight;
 }
 
+ref_rt& CRenderTarget::overlay_target()
+{
+	return RImplementation.o.dx10_msaa ? rt_Generic : rt_Color;
+}
+
 CRenderTarget::~CRenderTarget()
 {
 	_RELEASE(t_ss_async);

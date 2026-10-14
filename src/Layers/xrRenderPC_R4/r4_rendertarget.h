@@ -33,6 +33,8 @@ private:
 	u32 m_upscale_last_frame;
 	Fvector m_upscale_last_cam;
 	ID3DDepthStencilView* m_upscale_saved_zb;
+	bool m_overlays_after_upscale; // this frame the screen overlays run after the upscaler, at output resolution
+	ref_rt* m_overlay_target;      // set while they do
 public:
 	enum eStencilOptimizeMode
 	{
@@ -151,6 +153,7 @@ public:
 	// Upscaler (DLSS / FSR)
 	ref_rt rt_upscale_depth;  // scene depth/stencil at render resolution, readable by the upscaler
 	ref_rt rt_upscale_output; // upscaled scene color at output resolution
+	ref_rt rt_upscale_overlay; // output resolution, the screen overlays draw here and are copied to rt_upscale_output
 
 	ref_rt rt_blur_h_2;
 	ref_rt rt_blur_2;
@@ -445,6 +448,10 @@ public:
 	void phase_gasmask_drops();
 	void phase_gasmask_dudv();
 	void phase_nightvision();
+	// Screen overlays (gas mask, night vision, shader scopes): their target, and the passes before or after an upscaler
+	ref_rt& overlay_target();
+	void phase_screen_overlays();
+	void phase_screen_overlays_upscaled();
 	void phase_fakescope(); //crookr
 	void phase_heatvision(); //--DSR-- HeatVision
 	void phase_3DSSReticle(); // Redotix99: for 3D Shader Based Scopes

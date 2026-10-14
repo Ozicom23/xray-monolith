@@ -202,6 +202,7 @@ bool CDLSS::Evaluate(const UpscalerEvalParams& p)
 	eval.Feature.pInOutput = p.output;
 	eval.pInDepth = p.depth;
 	eval.pInMotionVectors = p.motion;
+	eval.pInBiasCurrentColorMask = p.reactive;
 	eval.InJitterOffsetX = p.jitter_x;
 	eval.InJitterOffsetY = p.jitter_y;
 	eval.InMVScaleX = p.mv_scale_x;
