@@ -649,7 +649,12 @@ namespace
 			return;
 		if (r.is_uint)
 		{
-			const UINT v[4] = { UINT(job.color[0]), UINT(job.color[1]), UINT(job.color[2]), UINT(job.color[3]) };
+			// The float's bits, not its value: FSR clears the reconstructed previous depth (R32_UINT, written with
+			// InterlockedMin of asuint(depth)) to 1.0f = far. Converted to the integer 1 it stayed below every depth,
+			// nothing was ever written, every pixel counted as disoccluded and no history was kept (the image shook
+			// with the jitter). FSR's other integer clear is 0, the same either way
+			UINT v[4];
+			memcpy(v, job.color, sizeof(v));
 			b->context->ClearUnorderedAccessViewUint(view, v);
 		}
 		else
