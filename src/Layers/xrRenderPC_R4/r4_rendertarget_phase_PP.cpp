@@ -449,6 +449,12 @@ void CRenderTarget::phase_upscale()
 		// History is useless after a pause (menus, loading) or a camera cut
 		if (Device.dwFrame - m_upscale_last_frame > 4 || Device.vCameraPosition.distance_to(m_upscale_last_cam) > 10.f)
 			m_upscale_reset = true;
+		// The precache frames after a load or vid_restart turn the camera around in place: nothing of them belongs in
+		// the history of the view that follows
+		static bool s_after_precache = false;
+		if (Device.dwPrecacheFrame || s_after_precache)
+			m_upscale_reset = true;
+		s_after_precache = Device.dwPrecacheFrame != 0;
 
 		// Camera from the main projection: near/far from the depth terms, vertical FOV from the Y scale
 		const Fmatrix& P = Device.mProject;

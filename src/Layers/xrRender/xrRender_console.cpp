@@ -341,7 +341,7 @@ int   ps_r4_fsr_debug_view        = 0;      // r4-only, FSR's on-screen debug vi
 Fvector4 ps_r4_upscaler_signs     = { 1, 1, 1, 1 }; // r4-only, debug: motion vector x/y and jitter x/y sign multipliers
 // r4-only: how much the upscaler trusts the current frame over its history: 3D scope lenses, foliage (wind isn't in
 // its motion vectors), first-person items. 0 = history as usual, 1 = current frame only
-Fvector4 ps_r4_upscaler_mask      = { 1.f, 0.5f, 0.f, 0.f };
+Fvector4 ps_r4_upscaler_mask      = { 1.f, 0.f, 0.f, 0.f }; // y (SSS-flagged foliage) 0: at 0.5 the jittered current frame made far tree edges flicker
 int   ps_r4_upscaler_late_overlays = 1;     // r4-only, gas mask, night/heat vision and shader scopes after the upscaler
 
 // Performance overlay (r4-only)
