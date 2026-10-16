@@ -1,0 +1,60 @@
+// GAMMA Upscaling 3DSS lens fix: the stock shader of "3DSS for GAMMA" (Redotix99, Andtheherois, party50) with one
+// line changed: with an upscaler the engine draws the lens after it at output resolution (r4_upscaler_scope_late),
+// and the lens takes its screen position from nextray_lens_res there (screen_res stays at render resolution for the
+// lens's other reads). Without it (0, other engines) the original line runs.
+#include "common.h"
+uniform float4 nextray_lens_res; // GAMMA Upscaling: the lens's pixel grid when drawn after the upscaler, else 0
+
+Texture2D s_prev_frame;
+uniform float4 shader_param_5;
+
+#define HUD_SCENE_BLUR_STEP 3.75f
+#define HUD_SCENE_BLUR_MIX 0.65f
+
+struct v2p
+{
+    float2 tc0  : TEXCOORD0;
+    float4 c    : COLOR0;
+    float fog   : FOG;
+    float4 hpos : SV_Position;
+};
+
+float3 sample_blurred_scene(float2 tc)
+{
+    static const float weights[7] = {
+        1.0f, 6.0f, 15.0f, 20.0f, 15.0f, 6.0f, 1.0f
+    };
+    float2 sample_step = screen_res.zw * HUD_SCENE_BLUR_STEP;
+    float3 color = 0.0f;
+
+    [unroll]
+    for (int y = 0; y < 7; ++y)
+    {
+        [unroll]
+        for (int x = 0; x < 7; ++x)
+        {
+            float2 offset = float2(x - 3, y - 3) * sample_step;
+            color += s_prev_frame.Sample(smp_base, tc + offset).rgb
+                * weights[x]
+                * weights[y];
+        }
+    }
+
+    return color * (1.0f / 4096.0f);
+}
+
+float4 main(v2p I) : SV_Target
+{
+    float4 mesh = I.c * s_base.Sample(smp_base, I.tc0);
+    float2 screen_tc = I.hpos.xy * (nextray_lens_res.x > 0 ? nextray_lens_res.zw : screen_res.zw); // GAMMA Upscaling
+    float3 blurred_scene = sample_blurred_scene(screen_tc);
+    float3 visible_mesh = lerp(mesh.rgb, blurred_scene, HUD_SCENE_BLUR_MIX);
+    float4 result = float4(visible_mesh, mesh.a);
+    float opacity = shader_param_5.w > 0.0f ? shader_param_5.w : 0.5f;
+
+    result.a *= I.fog * I.fog;
+    result.a *= saturate(opacity);
+
+    clip(result.a - (0.01f / 255.0f));
+    return result;
+}
