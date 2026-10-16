@@ -385,6 +385,8 @@ CRenderTarget::CRenderTarget()
 	m_upscale_last_cam.set(0.f, 0.f, 0.f);
 	m_upscale_saved_zb = nullptr;
 	m_overlays_after_upscale = false;
+	m_lens_after_upscale = false;
+	m_lens_before_upscale = false;
 	m_overlay_target = nullptr;
 
 	if (m_upscaler)
@@ -1345,6 +1347,12 @@ CRenderTarget::CRenderTarget()
 		rt_upscale_depth.create(r4_RT_upscale_depth, m_upscale_render_w, m_upscale_render_h, D3DFMT_D24S8);
 		rt_upscale_output.create(r4_RT_upscale_output, m_upscale_output_w, m_upscale_output_h, D3DFMT_A16B16G16R16F, 1, true);
 		rt_upscale_overlay.create(r4_RT_upscale_overlay, m_upscale_output_w, m_upscale_output_h, D3DFMT_A16B16G16R16F, 1);
+		extern int ps_r4_upscaler_scope_late;
+		if (ps_r4_upscaler_scope_late)
+		{
+			rt_upscale_lens_src.create("$user$nextray_lens_src", m_upscale_output_w, m_upscale_output_h, D3DFMT_A16B16G16R16F, 1);
+			rt_upscale_lens_depth.create("$user$nextray_lens_depth", m_upscale_output_w, m_upscale_output_h, D3DFMT_D24S8);
+		}
 		b_postprocess_upscaled = xr_new<CBlender_postprocess_upscaled>();
 		s_postprocess_upscaled.create(b_postprocess_upscaled, "r4\\postprocess_upscaled");
 

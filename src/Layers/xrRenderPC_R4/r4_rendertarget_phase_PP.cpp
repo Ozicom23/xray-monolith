@@ -1,6 +1,9 @@
 #include "stdafx.h"
 #include "r4_rendertarget.h"
 #include "r4_upscaler.h"
+#include "../../xrEngine/igame_persistent.h" // hud_params (r4_upscaler_jitter 2)
+extern int ps_r4_upscaler_jitter;
+extern int ps_r4_upscaler_scope_late;
 
 // The upscaler's mask (r4_upscaler_mask): where it should trust the current frame over its history. 3D scope lenses
 // (their reticle shader marks them with stencil 254) show the world through the scope, which moves unlike the lens;
@@ -209,7 +212,179 @@ namespace upscale_mask
 	}
 }
 
-void upscale_mask_release() { upscale_mask::release(); }
+// Scene depth at output resolution for the 3DSS lenses drawn after the upscaler (r4_upscaler_scope_late): each output
+// pixel takes the nearest render pixel's depth, so the held weapon still hides the lens where it did. Raw D3D11 like
+// the mask: the caller resets the context and RCache's state afterwards
+namespace upscale_lens_depth
+{
+	ID3D11ShaderResourceView* s_srv = nullptr;
+	ID3D11Resource* s_srv_res = nullptr; // s_srv is of this
+	ID3D11VertexShader* s_vs = nullptr;
+	ID3D11PixelShader* s_ps = nullptr;
+	ID3D11Buffer* s_cb = nullptr;
+	ID3D11RasterizerState* s_rs = nullptr;
+	ID3D11DepthStencilState* s_ds = nullptr;
+	bool s_failed = false;
+
+	const char* kShader =
+		"Texture2D<float> s_depth : register(t0);\n"
+		"cbuffer c : register(b0) { float4 scale; };\n" // render / output
+		"float4 vs(uint id : SV_VertexID) : SV_Position\n"
+		"{\n"
+		"	float2 uv = float2((id << 1) & 2, id & 2);\n"
+		"	return float4(uv * float2(2, -2) + float2(-1, 1), 0, 1);\n"
+		"}\n"
+		"float ps(float4 pos : SV_Position) : SV_Depth\n"
+		"{\n"
+		"	return s_depth.Load(int3(int2(pos.xy * scale.xy), 0));\n"
+		"}\n";
+
+	void release()
+	{
+		_RELEASE(s_srv);
+		s_srv_res = nullptr;
+		_RELEASE(s_vs);
+		_RELEASE(s_ps);
+		_RELEASE(s_cb);
+		_RELEASE(s_rs);
+		_RELEASE(s_ds);
+		s_failed = false;
+	}
+
+	static bool create_shaders()
+	{
+		if (s_ps)
+			return true;
+		if (s_failed)
+			return false;
+		ID3DBlob* vs = nullptr;
+		ID3DBlob* ps = nullptr;
+		ID3DBlob* err = nullptr;
+		HRESULT hr = D3DCompile(kShader, xr_strlen(kShader), "upscale_lens_depth", nullptr, nullptr, "vs", "vs_5_0", 0, 0, &vs, &err);
+		if (SUCCEEDED(hr))
+			hr = D3DCompile(kShader, xr_strlen(kShader), "upscale_lens_depth", nullptr, nullptr, "ps", "ps_5_0", 0, 0, &ps, &err);
+		if (SUCCEEDED(hr))
+			hr = HW.pDevice->CreateVertexShader(vs->GetBufferPointer(), vs->GetBufferSize(), nullptr, &s_vs);
+		if (SUCCEEDED(hr))
+			hr = HW.pDevice->CreatePixelShader(ps->GetBufferPointer(), ps->GetBufferSize(), nullptr, &s_ps);
+		if (SUCCEEDED(hr))
+		{
+			D3D11_BUFFER_DESC bd = {};
+			bd.ByteWidth = 16;
+			bd.Usage = D3D11_USAGE_DYNAMIC;
+			bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+			bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+			hr = HW.pDevice->CreateBuffer(&bd, nullptr, &s_cb);
+		}
+		if (SUCCEEDED(hr))
+		{
+			D3D11_RASTERIZER_DESC rd = {};
+			rd.FillMode = D3D11_FILL_SOLID;
+			rd.CullMode = D3D11_CULL_NONE;
+			rd.DepthClipEnable = TRUE;
+			hr = HW.pDevice->CreateRasterizerState(&rd, &s_rs);
+		}
+		if (SUCCEEDED(hr))
+		{
+			D3D11_DEPTH_STENCIL_DESC dd = {};
+			dd.DepthEnable = TRUE;
+			dd.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+			dd.DepthFunc = D3D11_COMPARISON_ALWAYS;
+			hr = HW.pDevice->CreateDepthStencilState(&dd, &s_ds);
+		}
+		if (FAILED(hr))
+		{
+			Msg("! Upscaler lens depth: shader setup failed: %s", err ? (const char*)err->GetBufferPointer() : "");
+			s_failed = true;
+		}
+		_RELEASE(vs);
+		_RELEASE(ps);
+		_RELEASE(err);
+		return !s_failed;
+	}
+
+	bool build(ID3D11DepthStencilView* dsv, ID3D11Resource* depth, u32 rw, u32 rh, u32 ow, u32 oh)
+	{
+		if (!dsv || !depth || !create_shaders())
+			return false;
+		if (s_srv_res != depth)
+		{
+			_RELEASE(s_srv);
+			s_srv_res = nullptr;
+			D3D11_SHADER_RESOURCE_VIEW_DESC sv = {};
+			sv.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
+			sv.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+			sv.Texture2D.MipLevels = 1;
+			if (FAILED(HW.pDevice->CreateShaderResourceView(depth, &sv, &s_srv)))
+			{
+				Msg("! Upscaler lens depth: depth view failed");
+				s_failed = true;
+				return false;
+			}
+			s_srv_res = depth;
+		}
+
+		ID3D11DeviceContext* ctx = HW.pContext;
+		D3D11_MAPPED_SUBRESOURCE m;
+		if (FAILED(ctx->Map(s_cb, 0, D3D11_MAP_WRITE_DISCARD, 0, &m)))
+			return false;
+		float* c = (float*)m.pData;
+		c[0] = float(rw) / float(ow);
+		c[1] = float(rh) / float(oh);
+		c[2] = c[3] = 0.f;
+		ctx->Unmap(s_cb, 0);
+
+		ctx->OMSetRenderTargets(0, nullptr, dsv);
+		D3D11_VIEWPORT vp = { 0.f, 0.f, float(ow), float(oh), 0.f, 1.f };
+		ctx->RSSetViewports(1, &vp);
+		ctx->IASetInputLayout(nullptr);
+		ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		ctx->VSSetShader(s_vs, nullptr, 0);
+		ctx->GSSetShader(nullptr, nullptr, 0);
+		ctx->HSSetShader(nullptr, nullptr, 0);
+		ctx->DSSetShader(nullptr, nullptr, 0);
+		ctx->PSSetShader(s_ps, nullptr, 0);
+		ctx->PSSetShaderResources(0, 1, &s_srv);
+		ctx->PSSetConstantBuffers(0, 1, &s_cb);
+		ctx->RSSetState(s_rs);
+		ctx->OMSetDepthStencilState(s_ds, 0);
+		ctx->Draw(3, 0);
+		ID3D11ShaderResourceView* none = nullptr;
+		ctx->PSSetShaderResources(0, 1, &none);
+		ctx->OMSetRenderTargets(0, nullptr, nullptr);
+		return true;
+	}
+}
+
+void upscale_mask_release() { upscale_mask::release(); upscale_lens_depth::release(); }
+
+// 3DSS lenses after the upscaler (r4_upscaler_scope_late): drawn over the upscaled image at output resolution, and
+// magnifying it (their s_prev_frame, rt_Generic_temp, pointed at a copy of it), instead of the render resolution scene
+// before the upscaler. screen_res stays at render resolution (the lenses' position and heat reads); their screen
+// position comes from nextray_lens_res (the patch mod's lens shaders). The upscaler's jitter doesn't reach them here
+void CRenderTarget::phase_3DSSReticle_upscaled()
+{
+	const u32 ow = m_upscale_output_w, oh = m_upscale_output_h;
+	HW.pContext->CopyResource(rt_Generic_2->pSurface, rt_Position->pSurface);
+	HW.pContext->CopyResource(rt_upscale_lens_src->pSurface, rt_upscale_output->pSurface);
+	upscale_lens_depth::build(rt_upscale_lens_depth->pZRT, rt_upscale_depth->pSurface, m_upscale_render_w, m_upscale_render_h, ow, oh);
+	RCache.OnFrameEnd();
+
+	ID3DBaseTexture* own = rt_Generic_temp->pTexture->surface_get();
+	rt_Generic_temp->pTexture->surface_set(rt_upscale_lens_src->pSurface);
+	RImplementation.upscale_lens_res.set(float(ow), float(oh), 1.f / float(ow), 1.f / float(oh));
+
+	u_setrt(ow, oh, rt_upscale_output->pRT, NULL, NULL, rt_upscale_lens_depth->pZRT);
+	RCache.set_CullMode(CULL_CCW);
+	RCache.set_Stencil(FALSE);
+	RCache.set_ColorWriteEnable();
+	RImplementation.render_Reticle();
+
+	RImplementation.upscale_lens_res.set(0.f, 0.f, 0.f, 0.f);
+	rt_Generic_temp->pTexture->surface_set(own);
+	_RELEASE(own);
+}
+
 
 void CRenderTarget::u_calc_tc_noise(Fvector2& p0, Fvector2& p1)
 {
@@ -409,6 +584,14 @@ void CRenderTarget::upscale_begin_scene()
 	{
 		float jx, jy;
 		CUpscaler::GetJitter(m_upscale_jitter_index, m_upscale_jitter_phases, jx, jy);
+		// r4_upscaler_jitter: 1 on, 0 off, 2 off while aiming down sights (the weapon's aim-in factor, hud_params.x,
+		// past the 0.05 the second viewport switches at) through 3DSS lenses drawn before the upscaler (the frame
+		// before did): they magnify the frame, so the jitter jumped through them by the magnification. Drawn after it
+		// (r4_upscaler_scope_late with the patch mod's lens shaders) they magnify the resolved image, it stays on
+		const bool aiming = g_pGamePersistent && g_pGamePersistent->m_pGShaderConstants->hud_params.x > 0.05f &&
+			m_lens_before_upscale;
+		if (ps_r4_upscaler_jitter == 0 || (ps_r4_upscaler_jitter == 2 && aiming))
+			jx = jy = 0.f;
 		m_upscale_jitter.set(jx, jy);
 		// Pixel offset to clip space, pixel Y goes down
 		RImplementation.upscale_jitter_on = true;
@@ -487,6 +670,17 @@ void CRenderTarget::phase_upscale()
 		p.reactive = upscale_mask::build(m_upscale_render_w, m_upscale_render_h, p.motion, p.depth);
 		m_upscale_done = m_upscaler->Evaluate(p);
 		RCache.OnFrameEnd();
+
+		// The 3DSS lenses held back for this (phase_combine): over the upscaled image. Without it as before, into
+		// rt_Generic_0 (not shown this frame, phase_pp stretches rt_Color)
+		if (m_lens_after_upscale)
+		{
+			if (m_upscale_done)
+				phase_3DSSReticle_upscaled();
+			else
+				phase_3DSSReticle();
+			m_lens_after_upscale = false;
+		}
 
 		// The screen overlays held back for this (phase_combine). Without an upscaled image at render resolution,
 		// onto rt_Color, which phase_pp stretches

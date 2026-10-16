@@ -194,6 +194,8 @@ public:
 	// Upscaler: sub-pixel jitter for the frame being rendered, consumed by the ssfx_jitter shader constant
 	bool upscale_jitter_on;
 	Fvector2 upscale_jitter_ndc;
+	// 3DSS lenses drawn after the upscaler (r4_upscaler_scope_late): their pixel grid (output w, h, 1/w, 1/h), else 0
+	Fvector4 upscale_lens_res;
 	bool upscale_scene_active; // scene renders at upscaler resolution (also on 3D scope frames, which get no jitter)
 	u32 upscaler_check();
 	void upscaler_probe();

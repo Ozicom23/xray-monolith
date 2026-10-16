@@ -37,6 +37,26 @@ void CRenderTarget::DoAsyncScreenshot()
 
 float hclip(float v, float dim) { return 2.f * v / dim - 1.f; }
 
+// The 3DSS lenses can draw after the upscaler only when every lens shader that reads the screen size (screen_res) also
+// takes its screen position from nextray_lens_res (the neXt-Ray patch mod's 3DSS lens shaders); with the stock ones
+// they draw before it, as without an upscaler. Reticles that only read their own texture work either way
+static bool scope_lenses_draw_late()
+{
+	const auto& items = RImplementation.GMBase.RGraph.mapScopeHUDSorted;
+	if (items.empty())
+		return false;
+	for (const auto& it : items)
+	{
+		ShaderElement* se = it.pSE;
+		if (!se || se->passes.empty())
+			return false;
+		R_constant_table* ct = se->passes[0]->constants._get();
+		if (ct && ct->get("screen_res") && !ct->get("nextray_lens_res"))
+			return false;
+	}
+	return true;
+}
+
 void CRenderTarget::phase_combine()
 {
 	PIX_EVENT(phase_combine);
@@ -524,7 +544,15 @@ void CRenderTarget::phase_combine()
 		phase_ssfx_motion_blur();
 	}
 
-	if (scope_3D_fake_enabled)
+	// With an upscaler the 3DSS lenses draw after it, at output resolution, magnifying the upscaled image
+	// (r4_upscaler_scope_late, phase_upscale): before it they magnified the render resolution scene, pixelated
+	extern int ps_r4_upscaler_scope_late;
+	m_lens_after_upscale = scope_3D_fake_enabled && m_upscale_in_scene && !Device.m_SecondViewport.IsSVPFrame() &&
+		ps_r4_upscaler_scope_late && rt_upscale_lens_src._get() && rt_upscale_lens_depth._get() && scope_lenses_draw_late();
+	if (!Device.m_SecondViewport.IsSVPFrame())
+		m_lens_before_upscale = scope_3D_fake_enabled && m_upscale_in_scene && !m_lens_after_upscale &&
+			!RImplementation.GMBase.RGraph.mapScopeHUDSorted.empty();
+	if (scope_3D_fake_enabled && !m_lens_after_upscale)
 	{
 		phase_3DSSReticle(); // Redotix99: for 3D Shader Based Scopes
 	}

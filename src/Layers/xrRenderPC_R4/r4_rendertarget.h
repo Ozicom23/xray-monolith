@@ -34,6 +34,8 @@ private:
 	Fvector m_upscale_last_cam;
 	ID3DDepthStencilView* m_upscale_saved_zb;
 	bool m_overlays_after_upscale; // this frame the screen overlays run after the upscaler, at output resolution
+	bool m_lens_after_upscale; // this frame the 3DSS lenses draw after the upscaler, at output resolution (r4_upscaler_scope_late)
+	bool m_lens_before_upscale; // the frame before drew 3DSS lenses before the upscaler (r4_upscaler_jitter 2 then turns it off)
 	ref_rt* m_overlay_target;      // set while they do
 public:
 	enum eStencilOptimizeMode
@@ -154,6 +156,8 @@ public:
 	ref_rt rt_upscale_depth;  // scene depth/stencil at render resolution, readable by the upscaler
 	ref_rt rt_upscale_output; // upscaled scene color at output resolution
 	ref_rt rt_upscale_overlay; // output resolution, the screen overlays draw here and are copied to rt_upscale_output
+	ref_rt rt_upscale_lens_src;   // output resolution: the upscaled image the 3DSS lenses magnify (r4_upscaler_scope_late)
+	ref_rt rt_upscale_lens_depth; // output resolution: scene depth for the lenses, from rt_upscale_depth
 
 	ref_rt rt_blur_h_2;
 	ref_rt rt_blur_2;
@@ -455,6 +459,7 @@ public:
 	void phase_fakescope(); //crookr
 	void phase_heatvision(); //--DSR-- HeatVision
 	void phase_3DSSReticle(); // Redotix99: for 3D Shader Based Scopes
+	void phase_3DSSReticle_upscaled(); // the same over the upscaled image (r4_upscaler_scope_late)
 	void phase_lut();
 	void phase_smaa();
 	void phase_scene_prepare();

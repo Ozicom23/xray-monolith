@@ -342,6 +342,8 @@ Fvector4 ps_r4_upscaler_signs     = { 1, 1, 1, 1 }; // r4-only, debug: motion ve
 // r4-only: how much the upscaler trusts the current frame over its history: 3D scope lenses, foliage (wind isn't in
 // its motion vectors), first-person items. 0 = history as usual, 1 = current frame only
 Fvector4 ps_r4_upscaler_mask      = { 1.f, 0.f, 0.f, 0.f }; // y (SSS-flagged foliage) 0: at 0.5 the jittered current frame made far tree edges flicker
+int   ps_r4_upscaler_jitter = 2;          // r4-only, 1 on, 0 off, 2 off while aiming through 3DSS lenses drawn before the upscaler
+int   ps_r4_upscaler_scope_late = 1;      // r4-only, 3DSS lenses after the upscaler at output resolution (vid_restart: its targets)
 int   ps_r4_upscaler_late_overlays = 1;     // r4-only, gas mask, night/heat vision and shader scopes after the upscaler
 
 // Performance overlay (r4-only)
@@ -1353,6 +1355,8 @@ void xrRender_initconsole()
 	CMD4(CCC_Vector4, "r4_upscaler_signs",        &ps_r4_upscaler_signs, Fvector4().set(-1, -1, -1, -1), Fvector4().set(1, 1, 1, 1));
 	CMD4(CCC_Vector4, "r4_upscaler_mask",         &ps_r4_upscaler_mask, Fvector4().set(0, 0, 0, 0), Fvector4().set(1, 1, 1, 1));
 	CMD4(CCC_Integer, "r4_upscaler_late_overlays", &ps_r4_upscaler_late_overlays,     0, 1);
+	CMD4(CCC_Integer, "r4_upscaler_jitter",       &ps_r4_upscaler_jitter,            0, 2);
+	CMD4(CCC_Integer, "r4_upscaler_scope_late",   &ps_r4_upscaler_scope_late,        0, 1);
 	CMD4(CCC_Integer, "r4_dlss_log",              &ps_r4_dlss_log,                   0, 2);
 #if defined(USE_DX11)
 	CMD3(CCC_Token,   "perf_overlay",             &ps_perf_overlay,                  perf_overlay_token);
