@@ -257,6 +257,50 @@ void CResourceManager::_DeleteVS(const SVS* vs)
 	Msg("! ERROR: Failed to find compiled vertex-shader '%s'", *vs->cName);
 }
 
+#if defined(USE_DX11)
+// The 3DSS lens shaders (any 3DSS for GAMMA version) take their screen position from the render resolution
+// (I.hpos.xy * screen_res.zw); drawn after the upscaler, at output resolution, they need nextray_lens_res there (0 without
+// it, which leaves them as they were). With r4_upscaler_lens_patch the source is changed so when it's compiled, in memory:
+// only that expression in these three shaders, and only when they don't take nextray_lens_res themselves. Patched ones
+// compile under their own name, so their cache entry is separate from the stock one
+static bool patch_3dss_lens_shader(LPCSTR sh_name, LPCSTR data, xr_string& patched)
+{
+	extern int ps_r4_upscaler_lens_patch;
+	if (!ps_r4_upscaler_lens_patch)
+		return false;
+	if (stricmp(sh_name, "models_scope_reticle") && stricmp(sh_name, "models_scope_reticle_precise") &&
+		stricmp(sh_name, "transparent_hud"))
+		return false;
+	if (strstr(data, "nextray_lens_res"))
+		return false;
+
+	static const char pattern[] = "I.hpos.xy * screen_res.zw";
+	static const char replacement[] = "I.hpos.xy * (nextray_lens_res.x > 0 ? nextray_lens_res.zw : screen_res.zw)";
+	if (!strstr(data, pattern))
+		return false;
+
+	// The declaration first, then the file as it is, its line numbers kept for compile errors
+	patched = "uniform float4 nextray_lens_res;\n#line 1\n";
+	u32 count = 0;
+	for (LPCSTR p = data;;)
+	{
+		LPCSTR hit = strstr(p, pattern);
+		if (!hit)
+		{
+			patched += p;
+			break;
+		}
+		patched.append(p, hit - p);
+		patched += replacement;
+		p = hit + sizeof(pattern) - 1;
+		++count;
+	}
+	Msg("* %s.ps: 3DSS lens screen position from the upscaler's output (%u place(s), r4_upscaler_lens_patch)", sh_name,
+		count);
+	return true;
+}
+#endif
+
 //--------------------------------------------------------------------------------------------------------------
 SPS* CResourceManager::_CreatePS(LPCSTR _name)
 {
@@ -347,7 +391,22 @@ SPS* CResourceManager::_CreatePS(LPCSTR _name)
 			c_entry = "main_ps_2_0";
 		}
 
-		HRESULT const _hr = ::Render->shader_compile(name, (DWORD const*)data, size, c_entry, c_target,
+		LPCSTR src = data;
+		u32 src_size = size;
+		LPCSTR compile_name = name;
+#if defined(USE_DX11)
+		xr_string patched;
+		string_path patched_name;
+		if (patch_3dss_lens_shader(shName, data, patched))
+		{
+			src = patched.c_str();
+			src_size = u32(patched.size());
+			xr_strconcat(patched_name, name, "_nxlens1");
+			compile_name = patched_name;
+		}
+#endif
+
+		HRESULT const _hr = ::Render->shader_compile(compile_name, (DWORD const*)src, src_size, c_entry, c_target,
 		                                             D3D10_SHADER_PACK_MATRIX_ROW_MAJOR, (void*&)_ps);
 
 		VERIFY(SUCCEEDED(_hr));
