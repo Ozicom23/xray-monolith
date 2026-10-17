@@ -140,6 +140,39 @@ void CResourceManager::_DeletePass(const SPass* P)
 	Msg("! ERROR: Failed to find compiled pass");
 }
 
+#if defined(USE_DX11)
+// SSS's grass (deffer_grass.vs) takes the TAA jitter only below a height of 0.1 (if (H < 0.1f) O.hpos.xy =
+// ssfx_taa_jitter(O.hpos)), so the blade above its base was never jittered. The upscalers take the jitter back out of
+// every pixel: the blades shook by it and were never sampled between pixels, grass stayed at render resolution
+// (pixelated, most with DLSS and lower internal resolutions; PC test) while the rest came out sharp. With
+// r4_upscaler_grass_jitter the condition also passes while the upscaler's jitter is on (nextray_upscale_jitter), in
+// memory when compiled; without the upscaler SSS TAA keeps its own. Patched shaders compile under their own name
+static bool patch_grass_jitter_shader(LPCSTR data, xr_string& patched)
+{
+	extern int ps_r4_upscaler_grass_jitter;
+	if (!ps_r4_upscaler_grass_jitter || strstr(data, "nextray_upscale_jitter"))
+		return false;
+
+	static const char condition[] = "if (H < 0.1f)";
+	static const char jitter[] = "O.hpos.xy = ssfx_taa_jitter(O.hpos);";
+	LPCSTR hit = strstr(data, condition);
+	if (!hit)
+		return false;
+	LPCSTR next = hit + sizeof(condition) - 1;
+	while (*next == ' ' || *next == '\t' || *next == '\r' || *next == '\n')
+		++next;
+	if (strncmp(next, jitter, sizeof(jitter) - 1) || strstr(next, condition))
+		return false;
+
+	// The declaration first, then the file as it is, its line numbers kept for compile errors
+	patched = "uniform float4 nextray_upscale_jitter;\n#line 1\n";
+	patched.append(data, hit - data);
+	patched += "if (H < 0.1f || nextray_upscale_jitter.x > 0)";
+	patched += hit + sizeof(condition) - 1;
+	return true;
+}
+#endif
+
 //--------------------------------------------------------------------------------------------------------------
 SVS* CResourceManager::_CreateVS(LPCSTR _name)
 {
@@ -217,7 +250,22 @@ SVS* CResourceManager::_CreateVS(LPCSTR _name)
 			c_entry = "main_vs_2_0";
 		}
 
-		HRESULT const _hr = ::Render->shader_compile(name, (DWORD const*)data, size, c_entry, c_target,
+		LPCSTR src = data;
+		u32 src_size = size;
+		LPCSTR compile_name = name;
+#if defined(USE_DX11)
+		xr_string patched;
+		string_path patched_name;
+		if (patch_grass_jitter_shader(data, patched))
+		{
+			Msg("* %s.vs: grass jittered over the whole blade while upscaling (r4_upscaler_grass_jitter)", shName);
+			src = patched.c_str();
+			src_size = u32(patched.size());
+			xr_strconcat(patched_name, name, "_nxjit1");
+			compile_name = patched_name;
+		}
+#endif
+		HRESULT const _hr = ::Render->shader_compile(compile_name, (DWORD const*)src, src_size, c_entry, c_target,
 		                                             D3D10_SHADER_PACK_MATRIX_ROW_MAJOR, (void*&)_vs);
 
 		VERIFY(SUCCEEDED(_hr));

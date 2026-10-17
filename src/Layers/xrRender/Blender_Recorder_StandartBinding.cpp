@@ -1210,6 +1210,20 @@ static class nextray_lens_res : public R_constant_setup
 	}
 }    nextray_lens_res;
 
+// nextray_upscale_jitter: x 1 while the upscaler's jitter is on (upscale_jitter_on), 0 otherwise. The grass jitter patch
+// (r4_upscaler_grass_jitter) jitters the whole grass blade with it, not only its base
+static class nextray_upscale_jitter : public R_constant_setup
+{
+	virtual void setup(R_constant* C)
+	{
+#if defined(USE_DX11)
+		RCache.set_c(C, RImplementation.upscale_jitter_on ? 1.f : 0.f, 0.f, 0.f, 0.f);
+#else
+		RCache.set_c(C, 0.f, 0.f, 0.f, 0.f);
+#endif
+	}
+}    nextray_upscale_jitter;
+
 static class ssfx_fTimeDelta : public R_constant_setup
 {
 	virtual void setup(R_constant* C)
@@ -1485,6 +1499,7 @@ void CBlender_Compile::SetMapping()
 	r_Constant("ssfx_motionblur", &ssfx_motionblur);
 	r_Constant("ssfx_jitter", &ssfx_jitter);
 	r_Constant("nextray_lens_res", &nextray_lens_res);
+	r_Constant("nextray_upscale_jitter", &nextray_upscale_jitter);
 	r_Constant("ssfx_pom", &ssfx_pom);
 
 	r_Constant("ssfx_terrain_pom", &ssfx_terrain_pom);
