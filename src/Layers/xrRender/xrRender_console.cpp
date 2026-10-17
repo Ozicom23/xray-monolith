@@ -341,6 +341,8 @@ int   ps_r4_fsr_debug_view        = 0;      // r4-only, FSR's on-screen debug vi
 Fvector4 ps_r4_upscaler_signs     = { 1, 1, 1, 1 }; // r4-only, debug: motion vector x/y and jitter x/y sign multipliers
 // r4-only: how much the upscaler trusts the current frame over its history: 3D scope lenses, foliage (wind isn't in
 // its motion vectors), first-person items. 0 = history as usual, 1 = current frame only
+// Console name r4_upscaler_reactive: r4_upscaler_mask saved (1, 0.5, 0, 0) in the user.ltx of earlier versions, which kept
+// grass and trees pixelated (most with DLSS) after the default changed; the old name is no longer read
 Fvector4 ps_r4_upscaler_mask      = { 1.f, 0.f, 0.f, 0.f }; // y (SSS-flagged foliage) 0: at 0.5 the jittered current frame made far tree edges flicker
 int   ps_r4_upscaler_jitter = 2;          // r4-only, 1 on, 0 off, 2 off while aiming through 3DSS lenses drawn before the upscaler
 int   ps_r4_upscaler_scope_late = 1;      // r4-only, 3DSS lenses after the upscaler at output resolution (vid_restart: its targets)
@@ -1354,7 +1356,7 @@ void xrRender_initconsole()
 	CMD4(CCC_Vector4, "r4_fsr_tuning",            &ps_r4_fsr_tuning, Fvector4().set(0, 0, 0, -1), Fvector4().set(1, 8, 1, 1));
 	CMD4(CCC_Integer, "r4_fsr_debug_view",        &ps_r4_fsr_debug_view,             0, 1);
 	CMD4(CCC_Vector4, "r4_upscaler_signs",        &ps_r4_upscaler_signs, Fvector4().set(-1, -1, -1, -1), Fvector4().set(1, 1, 1, 1));
-	CMD4(CCC_Vector4, "r4_upscaler_mask",         &ps_r4_upscaler_mask, Fvector4().set(0, 0, 0, 0), Fvector4().set(1, 1, 1, 1));
+	CMD4(CCC_Vector4, "r4_upscaler_reactive",     &ps_r4_upscaler_mask, Fvector4().set(0, 0, 0, 0), Fvector4().set(1, 1, 1, 1));
 	CMD4(CCC_Integer, "r4_upscaler_late_overlays", &ps_r4_upscaler_late_overlays,     0, 1);
 	CMD4(CCC_Integer, "r4_upscaler_jitter",       &ps_r4_upscaler_jitter,            0, 2);
 	CMD4(CCC_Integer, "r4_upscaler_scope_late",   &ps_r4_upscaler_scope_late,        0, 1);

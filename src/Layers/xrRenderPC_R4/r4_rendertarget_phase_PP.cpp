@@ -5,7 +5,7 @@
 extern int ps_r4_upscaler_jitter;
 extern int ps_r4_upscaler_scope_late;
 
-// The upscaler's mask (r4_upscaler_mask): where it should trust the current frame over its history. 3D scope lenses
+// The upscaler's mask (r4_upscaler_reactive): where it should trust the current frame over its history. 3D scope lenses
 // (their reticle shader marks them with stencil 254) show the world through the scope, which moves unlike the lens;
 // SSS marks foliage in the motion vectors' w (branches -1, grass > 0), whose wind isn't in the branches' motion
 // vectors; first-person items are their z. Built by a small pass right before the upscaler runs.
