@@ -93,10 +93,9 @@ jobs:
         cp gamedata/configs/text/eng/ui_mm_modded_exes.xml game/gamedata/configs/text/eng/
         cp gamedata/configs/text/rus/ui_mm_modded_exes.xml game/gamedata/configs/text/rus/
 
-        ls -lR game pdb "addons/3DSS lens fix"
+        ls -lR game pdb
         (cd game && zip -r "../GAMMA-Upscaling-${v}.zip" bin gamedata)
         (cd pdb && zip -r "../GAMMA-Upscaling-${v}-pdb.zip" .)
-        (cd "addons/3DSS lens fix" && zip -r "../../GAMMA-Upscaling-${v}-3DSS-lens-fix.zip" gamedata)
 
     - name: Create draft release
       env:
@@ -114,12 +113,6 @@ jobs:
         2. Extract `GAMMA-Upscaling-%V%.zip` into your `Anomaly` folder and overwrite the files (`bin\`: both exes, `nvngx_dlss.dll` and its license; `gamedata\`: the options menu).
         3. Launch "Anomaly (DX11-AVX)" or "Anomaly (DX11)" as usual and open Options > Video > Advanced > Upscaler.
 
-        **Optional: sharp 3DSS scopes** (`GAMMA-Upscaling-%V%-3DSS-lens-fix.zip`). With an upscaler, the scope image is magnified from the lower render resolution and looks pixelated. With this addon, the lens is drawn after the upscaler and magnifies the upscaled image. It contains three shaders of "3DSS for GAMMA" (Redotix99, Andtheherois, party50) with one line changed each.
-        - In Mod Organizer 2: "Install a new mod from an archive", pick the zip, and place the mod below "3DSS for GAMMA" in the left pane so it overrides it.
-        - Without Mod Organizer: extract it into your `Anomaly` folder.
-        - Without the addon, scopes still work: the engine detects the stock shaders and keeps the old path, with the jitter off while aiming, so the image doesn't shake.
-        - With other exes the shaders behave like the stock ones. Remove the addon when 3DSS for GAMMA updates its shaders, because it holds this version's copies.
-
         **Requirements**: DX11 renderer, Screen Space Shaders (included in GAMMA), MSAA and HDR10 off. DLSS needs an NVIDIA RTX GPU, FSR works on any DX11 GPU.
         On Linux (Proton) DLSS needs `PROTON_ENABLE_NVAPI=1`.
 
@@ -128,9 +121,9 @@ jobs:
         The `pdb` zip has debug symbols for crash reports and is not needed to play.
         This is an unofficial engine build, please don't report issues to GAMMA support while using it.
 
-        Credits: NVIDIA DLSS SDK © NVIDIA Corporation. AMD FidelityFX Super Resolution 3 © Advanced Micro Devices, MIT license. Engine: themrdemonized's xray-monolith. 3DSS lens shaders: "3DSS for GAMMA" by Redotix99, Andtheherois and party50.
+        Credits: NVIDIA DLSS SDK © NVIDIA Corporation. AMD FidelityFX Super Resolution 3 © Advanced Micro Devices, MIT license. Engine: themrdemonized's xray-monolith.
         EOF
         sed -i 's/^        //; s/%V%/'"${v}"'/g' notes.md
         gh release create "${GITHUB_REF_NAME}" --draft --verify-tag \
           --title "GAMMA Upscaling ${v} (DLSS / FSR)" --notes-file notes.md \
-          "GAMMA-Upscaling-${v}.zip" "GAMMA-Upscaling-${v}-3DSS-lens-fix.zip" "GAMMA-Upscaling-${v}-pdb.zip"
+          "GAMMA-Upscaling-${v}.zip" "GAMMA-Upscaling-${v}-pdb.zip"
