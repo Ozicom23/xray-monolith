@@ -252,6 +252,7 @@ namespace R_dsgraph
 #ifdef USE_DX11
 		mapDSGraphItems<float, true> mapScopeHUDSorted;
 		mapDSGraphItems<float, false> mapScopeHUD;
+		mapDSGraphItems<float, true> mapPDALate; // the PDA screen held back for after the upscaler (upscale_pda_late)
 #endif
 		template<bool free = true>
 		IC void clear_graph(RenderQueueArray& queue, u32 _priority)
@@ -329,6 +330,7 @@ namespace R_dsgraph
 #ifdef USE_DX11
 				mapScopeHUD.clear_and_free();
 				mapScopeHUDSorted.clear_and_free();
+				mapPDALate.clear_and_free();
 #endif
 			}
 			else
@@ -347,6 +349,7 @@ namespace R_dsgraph
 #ifdef USE_DX11
 				mapScopeHUD.clear();
 				mapScopeHUDSorted.clear();
+				mapPDALate.clear();
 #endif
 			}
 		}

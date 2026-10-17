@@ -547,6 +547,7 @@ public:
 	void upscale_end_scene();
 	void phase_upscale();
 	void upscale_hud_ui_depth();
+	void phase_pda_upscaled();
 
 	virtual void set_blur(float f) { param_blur = f; }
 	virtual void set_gray(float f) { param_gray = f; }

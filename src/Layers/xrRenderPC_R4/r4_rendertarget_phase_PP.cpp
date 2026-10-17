@@ -573,6 +573,9 @@ void CRenderTarget::upscale_begin_scene()
 	m_upscale_saved_zb = HW.pBaseZB;
 	HW.pBaseZB = rt_upscale_depth->pZRT;
 	RImplementation.upscale_scene_active = true;
+	extern int ps_r4_upscaler_pda_late;
+	RImplementation.upscale_pda_late = ps_r4_upscaler_pda_late && !Device.m_SecondViewport.IsSVPFrame() &&
+		rt_upscale_lens_depth._get();
 
 	// Second viewport (3D scope) frames are not fed to the upscaler, render them without jitter
 	if (Device.m_SecondViewport.IsSVPFrame())
@@ -608,6 +611,7 @@ void CRenderTarget::upscale_end_scene()
 {
 	RImplementation.upscale_jitter_on = false;
 	RImplementation.upscale_scene_active = false;
+	RImplementation.upscale_pda_late = false;
 	if (!m_upscale_in_scene)
 		return;
 	m_upscale_in_scene = false;
@@ -626,6 +630,23 @@ void CRenderTarget::upscale_end_scene()
 // against HW.pBaseZB at output resolution. The scene's depth went to rt_upscale_depth at render resolution and nothing
 // cleared HW.pBaseZB, so the test failed and the Svarog/Veles screens showed no artefacts or anomalies (PC test). Before
 // the frame's first HUD UI it gets the scene's depth, the HUD models' included, scaled up as for the late 3DSS lenses
+// The PDA screen (SSS's pda_overlay) held back from the scene's HUD (upscale_pda_late): over the upscaled image, at output
+// resolution, depth tested against the scene's depth scaled up as for the late 3DSS lenses. In the scene its text was
+// drawn at render resolution and, with no motion vectors of its own (it writes 0), smeared by the upscaler: unreadable
+// (PC test). It samples its own full resolution $user$ui and reads no screen buffers
+void CRenderTarget::phase_pda_upscaled()
+{
+	const u32 ow = m_upscale_output_w, oh = m_upscale_output_h;
+	upscale_lens_depth::build(rt_upscale_lens_depth->pZRT, rt_upscale_depth->pSurface, m_upscale_render_w, m_upscale_render_h, ow, oh);
+	RCache.OnFrameEnd();
+
+	u_setrt(ow, oh, rt_upscale_output->pRT, NULL, NULL, rt_upscale_lens_depth->pZRT);
+	RCache.set_CullMode(CULL_CCW);
+	RCache.set_Stencil(FALSE);
+	RCache.set_ColorWriteEnable();
+	RImplementation.GMBase.r_dsgraph_render_PDALate();
+}
+
 void CRenderTarget::upscale_hud_ui_depth()
 {
 	if (!m_upscale_hud_depth)
@@ -690,6 +711,19 @@ void CRenderTarget::phase_upscale()
 		p.reactive = upscale_mask::build(m_upscale_render_w, m_upscale_render_h, p.motion, p.depth);
 		m_upscale_done = m_upscaler->Evaluate(p);
 		RCache.OnFrameEnd();
+
+		// The PDA screen held back from the scene (upscale_pda_late): over the upscaled image. Without it as before
+		// the upscaler, onto rt_Color, which phase_pp stretches
+		if (!RImplementation.GMBase.RGraph.mapPDALate.empty())
+		{
+			if (m_upscale_done)
+				phase_pda_upscaled();
+			else
+			{
+				u_setrt(rt_Color, NULL, NULL, HW.pBaseZB);
+				RImplementation.GMBase.r_dsgraph_render_PDALate();
+			}
+		}
 
 		// The 3DSS lenses held back for this (phase_combine): over the upscaled image. Without it as before, into
 		// rt_Generic_0 (not shown this frame, phase_pp stretches rt_Color)

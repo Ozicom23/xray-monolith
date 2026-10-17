@@ -346,6 +346,7 @@ Fvector4 ps_r4_upscaler_signs     = { 1, 1, 1, 1 }; // r4-only, debug: motion ve
 Fvector4 ps_r4_upscaler_mask      = { 1.f, 0.f, 0.f, 0.f }; // y (SSS-flagged foliage) 0: at 0.5 the jittered current frame made far tree edges flicker
 int   ps_r4_upscaler_jitter = 2;          // r4-only, 1 on, 0 off, 2 off while aiming through 3DSS lenses drawn before the upscaler
 int   ps_r4_upscaler_scope_late = 1;      // r4-only, 3DSS lenses after the upscaler at output resolution (vid_restart: its targets)
+int   ps_r4_upscaler_pda_late = 1;        // r4-only, the PDA screen after the upscaler at output resolution (with r4_upscaler_scope_late's targets)
 int   ps_r4_upscaler_grass_jitter = 1;    // r4-only, SSS grass jittered over the whole blade while upscaling, not only at its base (vid_restart)
 int   ps_r4_upscaler_lens_patch = 1;      // r4-only, the stock 3DSS lens shaders take their screen position from nextray_lens_res when compiled (vid_restart)
 int   ps_r4_upscaler_late_overlays = 1;     // r4-only, gas mask, night/heat vision and shader scopes after the upscaler
@@ -1363,6 +1364,7 @@ void xrRender_initconsole()
 	CMD4(CCC_Integer, "r4_upscaler_scope_late",   &ps_r4_upscaler_scope_late,        0, 1);
 	CMD4(CCC_Integer, "r4_upscaler_lens_patch",   &ps_r4_upscaler_lens_patch,        0, 1);
 	CMD4(CCC_Integer, "r4_upscaler_grass_jitter", &ps_r4_upscaler_grass_jitter,      0, 1);
+	CMD4(CCC_Integer, "r4_upscaler_pda_late",     &ps_r4_upscaler_pda_late,          0, 1);
 	CMD4(CCC_Integer, "r4_dlss_log",              &ps_r4_dlss_log,                   0, 2);
 #if defined(USE_DX11)
 	CMD3(CCC_Token,   "perf_overlay",             &ps_perf_overlay,                  perf_overlay_token);

@@ -287,6 +287,15 @@ void CDSGraphManager::r_dsgraph_render_ScopeSorted()  //  Redotix99: for 3D Shad
 	r_dsgraph_render_graph_sorted(RGraph.mapScopeHUDSorted, true);
 	RImplementation.rmNormal();
 }
+
+// The PDA screen held back for after the upscaler (upscale_pda_late), as in r_dsgraph_render_sorted_hud
+void CDSGraphManager::r_dsgraph_render_PDALate()
+{
+	CHudInitializer initializer(true);
+	RImplementation.rmNear();
+	r_dsgraph_render_graph_sorted(RGraph.mapPDALate, true);
+	RImplementation.rmNormal();
+}
 #endif
 
 void CDSGraphManager::r_dsgraph_render_sorted_hud()

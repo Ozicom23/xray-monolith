@@ -121,6 +121,15 @@ void CDSGraphManager::r_dsgraph_insert_dynamic(dxRender_Visual *pVisual, Fmatrix
 					RGraph.mapHUDSorted.Emissive.emplace_back(distSQ, SSA, val_pObject, pVisual, xform, sh_d, i_mask[CDSGraphManager::fl_hud]);
 			}
 #endif // RENDER!=R_R1
+#if defined(USE_DX11)
+			// The PDA screen (SSS's pda_overlay) after the upscaler, at output resolution (phase_upscale)
+			if (RImplementation.upscale_pda_late && !i_mask[CDSGraphManager::fl_cam] && sh->passes.size() &&
+				sh->passes[0]->ps._get() && strstr(sh->passes[0]->ps->cName.c_str(), "pda_overlay"))
+			{
+				RGraph.mapPDALate.emplace_back(distSQ, SSA, val_pObject, pVisual, xform, sh, i_mask[CDSGraphManager::fl_hud]);
+				return;
+			}
+#endif
 			if (i_mask[CDSGraphManager::fl_cam])
 				RGraph.mapCamAttachedSorted.Sorted.emplace_back(distSQ, SSA, val_pObject, pVisual, xform, sh, i_mask[CDSGraphManager::fl_cam]);
 			else
