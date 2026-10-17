@@ -357,9 +357,15 @@ void CRender::Render()
 	{
         PROF_EVENT("render_hud");
 		if (g_hud->RenderActiveItemUIQuery())
+		{
+			Target->upscale_hud_ui_depth();
 			GMBase.r_dsgraph_render_hud_ui();
+		}
 		if (g_hud->RenderCamAttachedUIQuery())
+		{
+			Target->upscale_hud_ui_depth();
 			GMBase.r_dsgraph_render_cam_ui();
+		}
 	}
 
 }

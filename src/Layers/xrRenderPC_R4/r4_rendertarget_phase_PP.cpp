@@ -563,6 +563,7 @@ void CRenderTarget::phase_pp()
 void CRenderTarget::upscale_begin_scene()
 {
 	m_upscale_done = false;
+	m_upscale_hud_depth = false;
 	if (!m_upscale_enabled || m_upscale_in_scene)
 		return;
 	m_upscale_in_scene = true;
@@ -610,6 +611,7 @@ void CRenderTarget::upscale_end_scene()
 	if (!m_upscale_in_scene)
 		return;
 	m_upscale_in_scene = false;
+	m_upscale_hud_depth = true;
 
 	Device.dwRenderWidth = m_upscale_output_w;
 	Device.dwRenderHeight = m_upscale_output_h;
@@ -617,6 +619,24 @@ void CRenderTarget::upscale_end_scene()
 	m_upscale_saved_zb = nullptr;
 
 	u_setrt(Device.dwRenderWidth, Device.dwRenderHeight, HW.pBaseRT, NULL, NULL, HW.pBaseZB);
+	RImplementation.rmNormal();
+}
+
+// The HUD UI (detector screens, script HUD attachments) draws after the upscaler over the output image, depth tested
+// against HW.pBaseZB at output resolution. The scene's depth went to rt_upscale_depth at render resolution and nothing
+// cleared HW.pBaseZB, so the test failed and the Svarog/Veles screens showed no artefacts or anomalies (PC test). Before
+// the frame's first HUD UI it gets the scene's depth, the HUD models' included, scaled up as for the late 3DSS lenses
+void CRenderTarget::upscale_hud_ui_depth()
+{
+	if (!m_upscale_hud_depth)
+		return;
+	m_upscale_hud_depth = false;
+
+	const u32 ow = m_upscale_output_w, oh = m_upscale_output_h;
+	HW.pContext->ClearDepthStencilView(HW.pBaseZB, D3D_CLEAR_DEPTH | D3D_CLEAR_STENCIL, 1.0f, 0);
+	upscale_lens_depth::build(HW.pBaseZB, rt_upscale_depth->pSurface, m_upscale_render_w, m_upscale_render_h, ow, oh);
+	RCache.OnFrameEnd();
+	u_setrt(ow, oh, HW.pBaseRT, NULL, NULL, HW.pBaseZB);
 	RImplementation.rmNormal();
 }
 

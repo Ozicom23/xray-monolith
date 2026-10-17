@@ -375,6 +375,7 @@ CRenderTarget::CRenderTarget()
 	m_upscale_enabled = false;
 	m_upscale_in_scene = false;
 	m_upscale_done = false;
+	m_upscale_hud_depth = false;
 	m_upscale_reset = true;
 	m_upscale_output_w = m_upscale_render_w = Device.dwWidth;
 	m_upscale_output_h = m_upscale_render_h = Device.dwHeight;

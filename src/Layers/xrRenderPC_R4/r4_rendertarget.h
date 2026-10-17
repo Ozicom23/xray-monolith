@@ -24,6 +24,7 @@ private:
 	bool m_upscale_enabled;
 	bool m_upscale_in_scene;
 	bool m_upscale_done; // phase_pp reads rt_upscale_output this frame
+	bool m_upscale_hud_depth; // HW.pBaseZB still needs the scene's depth for the HUD UI (upscale_hud_ui_depth)
 	bool m_upscale_reset;
 	u32 m_upscale_render_w, m_upscale_render_h;
 	u32 m_upscale_output_w, m_upscale_output_h;
@@ -545,6 +546,7 @@ public:
 	void upscale_begin_scene();
 	void upscale_end_scene();
 	void phase_upscale();
+	void upscale_hud_ui_depth();
 
 	virtual void set_blur(float f) { param_blur = f; }
 	virtual void set_gray(float f) { param_gray = f; }
